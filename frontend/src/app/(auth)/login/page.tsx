@@ -10,10 +10,10 @@ export const metadata: Metadata = { title: "Log in" };
 
 /** Login page; already authenticated users are sent back to the blog. */
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
-  const target = safeRedirectTarget((await searchParams).next);
-  if (await getCurrentUser()) {
-    redirect(target);
-  }
+    const target = safeRedirectTarget((await searchParams).next);
+    if (await getCurrentUser()) {
+        redirect(target);
+    }
 
-  return <AuthForm mode="login" action={login} next={target} />;
+    return <AuthForm mode="login" action={login} next={target} />;
 }

@@ -10,10 +10,10 @@ export const metadata: Metadata = { title: "Sign up" };
 
 /** Registration page; already authenticated users are sent back to the blog. */
 export default async function RegisterPage({ searchParams }: PageProps<"/register">) {
-  const target = safeRedirectTarget((await searchParams).next);
-  if (await getCurrentUser()) {
-    redirect(target);
-  }
+    const target = safeRedirectTarget((await searchParams).next);
+    if (await getCurrentUser()) {
+        redirect(target);
+    }
 
-  return <AuthForm mode="register" action={register} next={target} />;
+    return <AuthForm mode="register" action={register} next={target} />;
 }

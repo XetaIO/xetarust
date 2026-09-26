@@ -39,7 +39,7 @@ export default async function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-3">
         {stats.map((stat) => (
           <Link key={stat.label} href={stat.href}>
-            <Card className="transition-colors hover:border-brand-violet/40">
+            <Card className="transition-colors hover:border-brand-orange/40">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-sm font-medium text-muted-foreground">{stat.label}</CardTitle>
                 <stat.icon className="size-4 text-muted-foreground" />

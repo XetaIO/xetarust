@@ -46,7 +46,7 @@ frontend/src/
 
 ## UI & animations
 
-- Thème sombre forcé (`<html class="dark">`), tokens dans `app/globals.css` (`--brand-violet`, `--brand-cyan`, `--brand-pink`), utilitaires `.text-gradient`, `.glass`, `.bg-grid`, animations `animate-aurora`, `animate-marquee`.
+- Thème sombre forcé (`<html class="dark">`), tokens dans `app/globals.css` (`--brand-orange`, `--brand-amber`, `--brand-red`), utilitaires `.text-gradient`, `.glass`, `.bg-grid`, animations `animate-aurora`, `animate-marquee`.
 - Animations avec `motion/react` dans des composants client : `Reveal` pour les apparitions au scroll, `useScroll`/`useSpring` pour les effets liés au scroll, `useMotionValue` pour les effets curseur. `prefers-reduced-motion` est respecté globalement.
 - shadcn/ui version Base UI : pour rendre un lien comme un bouton, utiliser `buttonVariants()` sur `<Link>` ; pour personnaliser un trigger, la prop `render` (pas `asChild`).
 - Markdown : `features/publishing/components/markdown.tsx` (`MarkdownAsync` côté serveur + Shiki), HTML brut ignoré.

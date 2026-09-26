@@ -8,12 +8,12 @@ export const metadata: Metadata = { title: "New article" };
 
 /** Page to write a new article. */
 export default async function NewArticlePage() {
-  const categories = await getCategories();
+    const categories = await getCategories();
 
-  return (
-    <>
-      <PageHeader title="New article" />
-      <ArticleForm categories={categories} />
-    </>
-  );
+    return (
+        <>
+            <PageHeader title="New article" />
+            <ArticleForm categories={categories} />
+        </>
+    );
 }

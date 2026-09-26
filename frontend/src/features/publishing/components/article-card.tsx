@@ -6,29 +6,31 @@ import type { ArticleSummaryDto } from "@/types/api/publishing/ArticleSummaryDto
 
 /** Preview of an article in the blog listing. */
 export function ArticleCard({ article }: { article: ArticleSummaryDto }) {
-  return (
-    <article className="group relative flex flex-col rounded-2xl border border-white/5 bg-card/50 p-6 transition-all hover:-translate-y-1 hover:border-brand-violet/40 hover:shadow-xl hover:shadow-brand-violet/5">
-      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-        <Link
-          href={`/blog/category/${article.category.slug}`}
-          className="relative z-10 rounded-full bg-brand-violet/15 px-2.5 py-1 font-medium text-brand-violet hover:bg-brand-violet/25"
-        >
-          {article.category.name}
-        </Link>
-        {article.published_at && <time dateTime={article.published_at}>{formatDate(article.published_at)}</time>}
-      </div>
-      <h2 className="mt-4 text-xl font-semibold tracking-tight">
-        <Link href={`/blog/${article.slug}`} className="after:absolute after:inset-0">
-          {article.title}
-        </Link>
-      </h2>
-      {article.excerpt && <p className="mt-2 line-clamp-3 text-muted-foreground">{article.excerpt}</p>}
-      <div className="mt-auto flex items-center gap-3 pt-6 text-xs text-muted-foreground">
-        <span>by {article.author.username}</span>
-        <span className="inline-flex items-center gap-1">
-          <Clock className="size-3" /> {article.reading_time_minutes} min read
-        </span>
-      </div>
-    </article>
-  );
+    return (
+        <article className="group relative flex flex-col rounded-2xl border border-white/5 bg-card/50 p-6 transition-all hover:-translate-y-1 hover:border-brand-orange/40 hover:shadow-xl hover:shadow-brand-orange/5">
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <Link
+                    href={`/blog/category/${article.category.slug}`}
+                    className="relative z-10 rounded-full bg-brand-orange/15 px-2.5 py-1 font-medium text-brand-orange hover:bg-brand-orange/25"
+                >
+                    {article.category.name}
+                </Link>
+                {article.published_at && (
+                    <time dateTime={article.published_at}>{formatDate(article.published_at)}</time>
+                )}
+            </div>
+            <h2 className="mt-4 text-xl font-semibold tracking-tight">
+                <Link href={`/blog/${article.slug}`} className="after:absolute after:inset-0">
+                    {article.title}
+                </Link>
+            </h2>
+            {article.excerpt && <p className="mt-2 line-clamp-3 text-muted-foreground">{article.excerpt}</p>}
+            <div className="mt-auto flex items-center gap-3 pt-6 text-xs text-muted-foreground">
+                <span>by {article.author.username}</span>
+                <span className="inline-flex items-center gap-1">
+                    <Clock className="size-3" /> {article.reading_time_minutes} min read
+                </span>
+            </div>
+        </article>
+    );
 }

@@ -10,19 +10,19 @@ import { SiteFooter } from "@/components/site/site-footer";
 
 /** Home page: animated presentation of Emeric and his projects (fully static). */
 export default function HomePage() {
-  return (
-    <>
-      <AuroraBackground />
-      <HomeNav />
-      <main className="flex-1">
-        <Hero />
-        <About />
-        <Skills />
-        <Experience />
-        <Projects />
-        <Contact />
-      </main>
-      <SiteFooter />
-    </>
-  );
+    return (
+        <>
+            <AuroraBackground />
+            <HomeNav />
+            <main className="flex-1">
+                <Hero />
+                <About />
+                <Skills />
+                <Experience />
+                <Projects />
+                <Contact />
+            </main>
+            <SiteFooter />
+        </>
+    );
 }
