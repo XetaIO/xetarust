@@ -1,0 +1,26 @@
+[package]
+name = "xetaravel-publishing"
+description = "Publishing bounded context of Xetaravel: articles and categories."
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+xetaravel-kernel = { workspace = true, features = ["http", "persistence"] }
+async-trait.workspace = true
+axum.workspace = true
+chrono.workspace = true
+sea-orm.workspace = true
+sea-orm-migration.workspace = true
+serde.workspace = true
+slug.workspace = true
+ts-rs.workspace = true
+uuid.workspace = true
+validator.workspace = true
+
+[dev-dependencies]
+# Test-only: the schema aggregator provides a migrated test database.
+migration = { workspace = true, features = ["test-support"] }
+mockall.workspace = true
+tokio.workspace = true

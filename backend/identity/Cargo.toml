@@ -1,0 +1,28 @@
+[package]
+name = "xetaravel-identity"
+description = "Identity bounded context of Xetaravel: users, roles, authentication and authorization."
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+xetaravel-kernel = { workspace = true, features = ["http", "persistence"] }
+argon2.workspace = true
+async-trait.workspace = true
+axum.workspace = true
+chrono.workspace = true
+jsonwebtoken.workspace = true
+sea-orm.workspace = true
+sea-orm-migration.workspace = true
+serde.workspace = true
+tokio.workspace = true
+ts-rs.workspace = true
+uuid.workspace = true
+validator.workspace = true
+
+[dev-dependencies]
+# Test-only: the schema aggregator provides a migrated test database.
+migration = { workspace = true, features = ["test-support"] }
+mockall.workspace = true
+tokio.workspace = true

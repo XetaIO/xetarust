@@ -1,0 +1,39 @@
+[package]
+name = "xetaravel-app"
+description = "Composition root of Xetaravel: configuration, bounded contexts wiring (ACL), HTTP server and CLI."
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[lib]
+name = "xetaravel_app"
+path = "src/lib.rs"
+
+[[bin]]
+name = "xetaravel"
+path = "src/main.rs"
+
+[dependencies]
+xetaravel-kernel = { workspace = true, features = ["http", "persistence"] }
+xetaravel-identity.workspace = true
+xetaravel-publishing.workspace = true
+xetaravel-discussion.workspace = true
+migration.workspace = true
+async-trait.workspace = true
+axum.workspace = true
+chrono.workspace = true
+dotenvy.workspace = true
+sea-orm.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tower-http.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+migration = { workspace = true, features = ["test-support"] }
+http-body-util.workspace = true
+tower.workspace = true

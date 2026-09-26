@@ -1,0 +1,28 @@
+[package]
+name = "xetaravel-kernel"
+description = "Shared kernel of Xetaravel: errors, pagination, clock, principal and HTTP plumbing shared by every bounded context."
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[features]
+# Axum plumbing: `ApiError`, JSON-aware extractors and principal extractors.
+http = ["dep:axum", "dep:tracing"]
+# SeaORM helpers: connection pool and database error translation.
+persistence = ["dep:sea-orm"]
+
+[dependencies]
+async-trait.workspace = true
+chrono.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+ts-rs.workspace = true
+uuid.workspace = true
+validator.workspace = true
+axum = { workspace = true, optional = true }
+sea-orm = { workspace = true, optional = true }
+tracing = { workspace = true, optional = true }
+
+[dev-dependencies]
+tokio.workspace = true

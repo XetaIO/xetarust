@@ -1,0 +1,53 @@
+[workspace]
+resolver = "3"
+members = ["backend/kernel", "backend/identity", "backend/publishing", "backend/discussion", "backend/migration", "backend/app"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+authors = ["Emeric Fevre <emeric@xetaravel.com>"]
+license = "MIT"
+
+[workspace.dependencies]
+# Internal crates: shared kernel, bounded contexts, schema aggregator
+xetaravel-kernel = { path = "backend/kernel" }
+xetaravel-identity = { path = "backend/identity" }
+xetaravel-publishing = { path = "backend/publishing" }
+xetaravel-discussion = { path = "backend/discussion" }
+migration = { path = "backend/migration" }
+
+# Async runtime & web
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal", "sync"] }
+axum = { version = "0.8", features = ["macros"] }
+tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.7", features = ["cors", "trace", "compression-gzip"] }
+http-body-util = "0.1"
+async-trait = "0.1"
+
+# Persistence
+sea-orm = { version = "2", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-uuid", "with-chrono"] }
+sea-orm-migration = { version = "2", features = ["sqlx-postgres", "runtime-tokio-rustls"] }
+
+# Serialization, validation, bindings
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+validator = { version = "0.21", features = ["derive"] }
+ts-rs = { version = "12", features = ["uuid-impl", "chrono-impl"] }
+
+# Utilities
+uuid = { version = "1", features = ["v7", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "2"
+slug = "0.1"
+
+# Security
+argon2 = "0.6"
+jsonwebtoken = { version = "11", default-features = false, features = ["rust_crypto"] }
+
+# Config & observability
+dotenvy = "0.15"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Testing
+mockall = "0.15"

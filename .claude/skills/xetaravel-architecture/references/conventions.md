@@ -1,0 +1,48 @@
+# Conventions
+
+## Routes de l'API
+
+| Méthode | Route | Accès | Contexte | Use case |
+|---|---|---|---|---|
+| GET | `/api/health` | public | app | — |
+| POST | `/api/auth/register` | public | Identity | `RegisterUser` → 201 `AuthResponse` |
+| POST | `/api/auth/login` | public | Identity | `LoginUser` → `AuthResponse` |
+| GET | `/api/auth/me` | membre | Identity | `GetCurrentUser` → `UserDto` |
+| GET | `/api/admin/users?page&per_page` | admin | Identity | `ListUsers` |
+| PATCH | `/api/admin/users/{id}/role` | admin | Identity | `ChangeUserRole` (auto-rétrogradation interdite) |
+| GET | `/api/articles?page&per_page&category` | public | Publishing | `ListPublishedArticles` → `Paginated<ArticleSummaryDto>` |
+| GET | `/api/articles/{slug}` | public | Publishing | `GetPublishedArticle` → `ArticleDto` |
+| GET | `/api/categories` | public | Publishing | `ListCategories` → `CategoryDto[]` |
+| GET / POST | `/api/admin/articles` | admin | Publishing | `ListArticles` / `CreateArticle` |
+| GET / PUT / DELETE | `/api/admin/articles/{id}` | admin | Publishing | `GetArticle` / `UpdateArticle` / `DeleteArticle` |
+| POST | `/api/admin/categories` | admin | Publishing | `CreateCategory` |
+| PUT / DELETE | `/api/admin/categories/{id}` | admin | Publishing | `UpdateCategory` / `DeleteCategory` (409 si non vide) |
+| GET | `/api/articles/{slug}/comments` | public | Discussion | `ListComments` → `CommentDto[]` |
+| POST | `/api/articles/{slug}/comments` | membre | Discussion | `PostComment` → 201 `CommentDto` |
+| DELETE | `/api/comments/{id}` | auteur ou admin | Discussion | `DeleteComment` → 204 |
+
+Pagination : `page` commence à 1, `per_page` ∈ [1, 50] (10 par défaut).
+
+## Règles métier clés
+
+- Nouveau compte = `member`. Email et username uniques (insensible à la casse).
+- Mot de passe 8–128 caractères, haché en Argon2id.
+- Slug d'article/catégorie dérivé du titre/nom si vide, modifiable, unique ; conservé lors d'une édition sans slug.
+- Un article republié garde sa première date de publication.
+- Une catégorie contenant des articles ne peut pas être supprimée.
+- Seuls les articles publiés peuvent être commentés (Discussion interroge Publishing).
+- Supprimer un article supprime ses commentaires (cascade SQL `comments.article_id → articles`).
+
+## Nommage
+
+- Crates : `xetaravel-<contexte>` ; types de module `<Contexte>Module` ; contrats publics nommés d'après le fournisseur (`IdentityDirectory`, `PublishedArticles`) ; ports nommés d'après le besoin du consommateur (`AuthorDirectory`, `ArticleCatalog`) ; adapters ACL `<Fournisseur><Port>` (`IdentityAuthorDirectory`).
+- Rust : use cases au format `VerbeNom` (`CreateArticle`), fichiers en `snake_case` du même nom ; DTOs suffixés `Dto` / `Request` / `Query`.
+- Migrations : `mYYYYMMDD_<contexte>_NNNNNN_<action>`.
+- Tables SQL au pluriel `snake_case`, colonnes `snake_case`, FK `<table>_id`, index `idx_<table>_<col>`.
+- TypeScript : composants en `PascalCase` dans des fichiers `kebab-case.tsx`, Server Actions en verbes (`saveArticle`), un dossier `features/<contexte>/` par contexte.
+
+## Git
+
+- Messages de commit en anglais, à l'impératif (`Add category deletion guard`).
+- Ne jamais committer `.env`, `.env.local`, `target/`, `node_modules/`.
+- Les fichiers `frontend/src/types/api/**/*.ts` générés **sont** commités (le frontend doit compiler sans Rust).

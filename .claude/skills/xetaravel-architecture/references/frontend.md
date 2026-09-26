@@ -1,0 +1,52 @@
+# Frontend — Next.js 16
+
+> Next.js 16 diffère des versions précédentes : lire `frontend/node_modules/next/dist/docs/` avant d'utiliser une API inconnue. Points clés : `middleware.ts` est renommé **`proxy.ts`** ; `params`, `searchParams` et `cookies()` sont **asynchrones** ; types globaux `PageProps<"/route">` / `LayoutProps<"/route">` (générés par `next typegen`).
+
+## Organisation par feature
+
+Les features reflètent les bounded contexts du backend.
+
+```
+frontend/src/
+├── app/                        routes (App Router) — composent les features, ne bougent pas
+│   ├── page.tsx                accueil statique animé
+│   ├── (auth)/login|register   formulaires d'auth
+│   ├── blog/                   liste, catégories, article + commentaires (dynamique)
+│   └── dashboard/              admin (layout = requireAdmin())
+├── features/
+│   ├── identity/               session.ts (storeSession, clearSession, getCurrentUser, requireUser, requireAdmin),
+│   │                           redirect.ts, actions.ts (login, register, logout, changeUserRole), queries.ts (getUsers),
+│   │                           components/{auth-form, role-toggle}
+│   ├── publishing/             queries.ts (articles, catégories, admin), actions.ts (saveArticle, deleteArticle, saveCategory, deleteCategory),
+│   │                           components/{article-card, article-list, category-nav, markdown, article-form, category-form}
+│   └── discussion/             queries.ts (getComments), actions.ts (postComment, deleteComment),
+│                               components/{comment-form, comment-section}
+├── lib/
+│   ├── api/client.ts           apiFetch() server-only, ajoute le Bearer depuis le cookie
+│   ├── api/errors.ts           ApiError (miroir de ErrorBody), isApiError, orNull
+│   ├── api/session-cookie.ts   nom du cookie httpOnly (partagé client / proxy / identity)
+│   ├── forms.ts                FormState + helpers de lecture de FormData
+│   └── format.ts               dates, pagination
+├── components/                 transverses : ui/ (shadcn), forms/, site/ (header, footer, pagination), home/, dashboard/ (nav, page-header)
+├── content/profile.ts          contenu de la page d'accueil
+├── types/api/{shared,identity,publishing,discussion}/   GÉNÉRÉ par ts-rs — ne jamais éditer à la main
+└── proxy.ts                    garde optimiste de /dashboard (présence du cookie)
+```
+
+## Règles
+
+- **Frontières** : une feature n'importe jamais une autre feature ni les types `types/api/<autre contexte>/` (ESLint `no-restricted-imports`, `eslint.config.mjs`). Elle peut importer `lib/`, `components/` et `types/api/shared/`. Les routes `app/**` composent : ex. `app/blog/[slug]/page.tsx` lit l'utilisateur via Identity et passe un `CommentViewer { id, isAdmin }` à `CommentSection` (Discussion).
+- **Lecture** : Server Components qui appellent `features/<contexte>/queries.ts`. **Écriture** : Server Actions dans `features/<contexte>/actions.ts`, jamais de `fetch` vers l'API depuis le navigateur.
+- Tout module qui touche au cookie ou à l'API importe `"server-only"`.
+- Server Action type : lire le `FormData` → construire le DTO typé (`@/types/api/<contexte>/...`) → `apiFetch` dans un `try` → `toFormState(error)` en cas d'erreur 4xx → `revalidatePath` → `redirect` **hors du try**.
+- Formulaires : `useActionState` + `FieldError` / `FormMessage` pour afficher `fields` renvoyés par l'API. Les messages de validation viennent du backend (source de vérité).
+- Suppressions : composant `ConfirmAction` (AlertDialog + toast) avec une Server Action liée (`action.bind(null, id)`).
+- L'autorisation réelle est faite par l'API Rust ; `proxy.ts` et `requireAdmin()` ne sont que du confort UX (404 pour les membres sur `/dashboard`).
+- La page d'accueil doit rester **statique** (pas de `cookies()` ni d'appel API) ; le header avec session n'est utilisé que dans blog/auth/dashboard.
+
+## UI & animations
+
+- Thème sombre forcé (`<html class="dark">`), tokens dans `app/globals.css` (`--brand-violet`, `--brand-cyan`, `--brand-pink`), utilitaires `.text-gradient`, `.glass`, `.bg-grid`, animations `animate-aurora`, `animate-marquee`.
+- Animations avec `motion/react` dans des composants client : `Reveal` pour les apparitions au scroll, `useScroll`/`useSpring` pour les effets liés au scroll, `useMotionValue` pour les effets curseur. `prefers-reduced-motion` est respecté globalement.
+- shadcn/ui version Base UI : pour rendre un lien comme un bouton, utiliser `buttonVariants()` sur `<Link>` ; pour personnaliser un trigger, la prop `render` (pas `asChild`).
+- Markdown : `features/publishing/components/markdown.tsx` (`MarkdownAsync` côté serveur + Shiki), HTML brut ignoré.

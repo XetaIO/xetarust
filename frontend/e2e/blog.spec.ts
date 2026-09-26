@@ -1,0 +1,85 @@
+import { execFileSync } from "node:child_process";
+import path from "node:path";
+
+import { expect, type Page, test } from "@playwright/test";
+
+/** Binary of the Rust API, used to promote the test admin. */
+const API_BINARY = path.resolve(__dirname, "../../target/debug/xetaravel");
+
+/** Returns a short unique suffix for test data. */
+function unique(): string {
+  return Math.random().toString(36).slice(2, 8);
+}
+
+/** Registers a new account through the UI and returns its email. */
+async function register(page: Page, username: string): Promise<string> {
+  const email = `${username}@example.com`;
+  await page.goto("/register");
+  await page.getByLabel("Username").fill(username);
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill("super-secret");
+  await page.getByRole("button", { name: "Create my account" }).click();
+  await expect(page).toHaveURL(/\/blog$/);
+  return email;
+}
+
+test("home page presents Emeric", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { level: 1, name: "Emeric Fevre" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Things I've built." })).toBeAttached();
+});
+
+test("the dashboard is protected", async ({ page }) => {
+  await page.goto("/dashboard");
+  await expect(page).toHaveURL(/\/login\?next=%2Fdashboard/);
+});
+
+test("admin publishes an article and a member comments it", async ({ browser }) => {
+  const id = unique();
+
+  // --- Admin: register, get promoted, create a category and an article.
+  const adminContext = await browser.newContext();
+  const admin = await adminContext.newPage();
+  const adminEmail = await register(admin, `admin_${id}`);
+  execFileSync(API_BINARY, ["make-admin", adminEmail], { cwd: path.resolve(__dirname, "../..") });
+
+  const [session] = await adminContext.cookies();
+  expect(session.name).toBe("xetaravel_token");
+  expect(session.httpOnly).toBe(true);
+  expect(await admin.evaluate(() => document.cookie)).not.toContain("xetaravel_token");
+
+  await admin.goto("/dashboard/categories");
+  await admin.getByPlaceholder("Name").first().fill(`Rust ${id}`);
+  await admin.getByRole("button", { name: "Add" }).click();
+  await expect(admin.getByText("Category created.")).toBeVisible();
+
+  const title = `Hello from Rust ${id}`;
+  await admin.goto("/dashboard/articles/new");
+  await admin.getByLabel("Category").selectOption({ label: `Rust ${id}` });
+  await admin.getByLabel("Title").fill(title);
+  await admin.getByLabel("Content (Markdown)").fill("# Intro\n\nWritten with **Axum**.");
+  await admin.getByLabel("Publish this article").check();
+  await admin.getByRole("button", { name: "Create article" }).click();
+  await expect(admin).toHaveURL(/\/dashboard\/articles$/);
+  await expect(admin.getByRole("cell", { name: title })).toBeVisible();
+
+  // --- Visitor: reads the article but must log in to comment.
+  const reader = await browser.newPage();
+  await reader.goto("/blog");
+  await reader.getByRole("link", { name: title }).click();
+  await expect(reader.getByRole("heading", { name: "Intro" })).toBeVisible();
+  await expect(reader.getByText("to join the discussion")).toBeVisible();
+
+  // --- Member: registers and comments.
+  const memberContext = await browser.newContext();
+  const member = await memberContext.newPage();
+  await register(member, `member_${id}`);
+  await member.goto(reader.url());
+  await member.getByPlaceholder("Share your thoughts…").fill("Great article!");
+  await member.getByRole("button", { name: "Post comment" }).click();
+  await expect(member.getByText("Great article!")).toBeVisible();
+
+  // Members cannot open the dashboard.
+  const response = await member.goto("/dashboard");
+  expect(response?.status()).toBe(404);
+});

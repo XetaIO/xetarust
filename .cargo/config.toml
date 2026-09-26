@@ -1,0 +1,6 @@
+[env]
+# ts-rs writes the generated TypeScript bindings straight into the frontend
+# every time `cargo test` runs.
+TS_RS_EXPORT_DIR = { value = "frontend/src/types/api", relative = true }
+# Pagination counters are u64: expose them as plain JS numbers.
+TS_RS_LARGE_INT = "number"

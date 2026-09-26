@@ -1,0 +1,175 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-geist-sans);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-brand-violet: var(--brand-violet);
+  --color-brand-cyan: var(--brand-cyan);
+  --color-brand-pink: var(--brand-pink);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  --animate-aurora: aurora 18s ease-in-out infinite alternate;
+  --animate-marquee: marquee var(--marquee-duration, 40s) linear infinite;
+  --animate-marquee-reverse: marquee var(--marquee-duration, 40s) linear infinite reverse;
+  --animate-shine: shine 6s linear infinite;
+
+  @keyframes aurora {
+    0% {
+      transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+    }
+    50% {
+      transform: translate3d(8%, -6%, 0) scale(1.15) rotate(20deg);
+    }
+    100% {
+      transform: translate3d(-6%, 8%, 0) scale(0.95) rotate(-15deg);
+    }
+  }
+
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(calc(-50% - 0.75rem));
+    }
+  }
+
+  @keyframes shine {
+    from {
+      background-position: 0% 50%;
+    }
+    to {
+      background-position: 200% 50%;
+    }
+  }
+}
+
+/* Light tokens are kept for shadcn compatibility; the site renders in dark mode. */
+:root {
+  --radius: 0.75rem;
+  --background: oklch(0.99 0 0);
+  --foreground: oklch(0.15 0.01 280);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.15 0.01 280);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.15 0.01 280);
+  --primary: oklch(0.55 0.22 290);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.96 0.01 280);
+  --secondary-foreground: oklch(0.2 0.01 280);
+  --muted: oklch(0.96 0.01 280);
+  --muted-foreground: oklch(0.5 0.02 280);
+  --accent: oklch(0.96 0.01 280);
+  --accent-foreground: oklch(0.2 0.01 280);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.92 0.01 280);
+  --input: oklch(0.92 0.01 280);
+  --ring: oklch(0.55 0.22 290);
+  --brand-violet: oklch(0.62 0.24 295);
+  --brand-cyan: oklch(0.8 0.14 200);
+  --brand-pink: oklch(0.7 0.22 350);
+}
+
+.dark {
+  --background: oklch(0.13 0.012 280);
+  --foreground: oklch(0.97 0.005 280);
+  --card: oklch(0.17 0.015 280);
+  --card-foreground: oklch(0.97 0.005 280);
+  --popover: oklch(0.17 0.015 280);
+  --popover-foreground: oklch(0.97 0.005 280);
+  --primary: oklch(0.7 0.19 295);
+  --primary-foreground: oklch(0.13 0.012 280);
+  --secondary: oklch(0.22 0.02 280);
+  --secondary-foreground: oklch(0.97 0.005 280);
+  --muted: oklch(0.22 0.02 280);
+  --muted-foreground: oklch(0.7 0.02 280);
+  --accent: oklch(0.24 0.03 285);
+  --accent-foreground: oklch(0.97 0.005 280);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.7 0.19 295);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply scroll-smooth font-sans;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  ::selection {
+    @apply bg-brand-violet/40 text-white;
+  }
+}
+
+@layer utilities {
+  /* Animated violet → cyan → pink gradient text. */
+  .text-gradient {
+    @apply bg-clip-text text-transparent animate-shine;
+    background-image: linear-gradient(
+      90deg,
+      var(--brand-violet),
+      var(--brand-cyan),
+      var(--brand-pink),
+      var(--brand-violet)
+    );
+    background-size: 200% auto;
+  }
+
+  /* Faint grid used behind hero sections. */
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, oklch(1 0 0 / 5%) 1px, transparent 1px),
+      linear-gradient(to bottom, oklch(1 0 0 / 5%) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+
+  /* Frosted glass surfaces. */
+  .glass {
+    @apply border border-white/10 bg-white/[0.04] backdrop-blur-xl;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

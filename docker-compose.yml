@@ -1,0 +1,29 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: xetaravel_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: xetaravel
+      POSTGRES_PASSWORD: xetaravel
+      POSTGRES_DB: xetaravel
+    ports:
+      - "5442:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  postgres_test:
+    image: postgres:17-alpine
+    container_name: xetaravel_postgres_test
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: xetaravel
+      POSTGRES_PASSWORD: xetaravel
+      POSTGRES_DB: xetaravel_test
+    ports:
+      - "5443:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+
+volumes:
+  postgres_data:

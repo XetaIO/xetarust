@@ -1,0 +1,26 @@
+[package]
+name = "migration"
+description = "PostgreSQL schema of Xetaravel: aggregates the migrations owned by each bounded context."
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+name = "migration"
+path = "src/lib.rs"
+
+[features]
+# Migrated test database and cross-context seeds for the persistence tests.
+test-support = ["dep:dotenvy", "dep:uuid"]
+
+[dependencies]
+xetaravel-identity.workspace = true
+xetaravel-publishing.workspace = true
+xetaravel-discussion.workspace = true
+async-trait.workspace = true
+sea-orm-migration.workspace = true
+tokio.workspace = true
+dotenvy = { workspace = true, optional = true }
+uuid = { workspace = true, optional = true }
