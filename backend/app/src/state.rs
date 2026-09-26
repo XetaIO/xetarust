@@ -37,6 +37,7 @@ impl AppState {
             db.clone(),
             clock.clone(),
             authors.clone(),
+            config.uploads_dir.join("covers"),
         ));
         let articles = Arc::new(PublishingArticleCatalog::new(
             publishing.published_articles(),

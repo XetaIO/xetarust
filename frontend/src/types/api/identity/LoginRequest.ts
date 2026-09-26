@@ -3,4 +3,4 @@
 /**
  * Body of `POST /api/auth/login`.
  */
-export type LoginRequest = { email: string, password: string, };
+export type LoginRequest = { email: string; password: string };

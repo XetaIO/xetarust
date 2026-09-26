@@ -9,9 +9,10 @@ import { getAdminArticle, getCategories } from "@/features/publishing/queries";
 
 export const metadata: Metadata = { title: "Edit article" };
 
-/** Page to edit an existing article. */
-export default async function EditArticlePage({ params }: PageProps<"/dashboard/articles/[id]/edit">) {
+/** Page to edit an existing article (`?cover_error` shows a cover rejected at creation). */
+export default async function EditArticlePage({ params, searchParams }: PageProps<"/dashboard/articles/[id]/edit">) {
     const { id } = await params;
+    const { cover_error: coverError } = await searchParams;
     const [article, categories] = await Promise.all([getAdminArticle(id), getCategories()]);
     if (!article) {
         notFound();
@@ -30,7 +31,11 @@ export default async function EditArticlePage({ params }: PageProps<"/dashboard/
                     )
                 }
             />
-            <ArticleForm categories={categories} article={article} />
+            <ArticleForm
+                categories={categories}
+                article={article}
+                coverError={typeof coverError === "string" ? coverError : undefined}
+            />
         </>
     );
 }

@@ -1,6 +1,7 @@
 //! Runtime configuration read from the environment (see `.env.example`).
 
 use std::env;
+use std::path::PathBuf;
 
 use chrono::Duration;
 use thiserror::Error;
@@ -25,6 +26,8 @@ pub struct Config {
     pub jwt: JwtSettings,
     pub app_addr: String,
     pub cors_origin: String,
+    /// Root directory of the uploaded files (cover images...).
+    pub uploads_dir: PathBuf,
 }
 
 impl Config {
@@ -65,6 +68,9 @@ impl Config {
             },
             app_addr: lookup("APP_ADDR").unwrap_or_else(|| "127.0.0.1:8080".into()),
             cors_origin: lookup("CORS_ORIGIN").unwrap_or_else(|| "http://localhost:3000".into()),
+            uploads_dir: lookup("UPLOADS_DIR")
+                .unwrap_or_else(|| "storage/uploads".into())
+                .into(),
         })
     }
 }
@@ -97,6 +103,18 @@ mod tests {
         assert_eq!(config.jwt.secret, SECRET);
         assert_eq!(config.jwt.ttl, Duration::days(7));
         assert_eq!(config.app_addr, "127.0.0.1:8080");
+        assert_eq!(config.uploads_dir, PathBuf::from("storage/uploads"));
+    }
+
+    #[test]
+    fn reads_the_uploads_directory() {
+        let config = Config::from_lookup(lookup(&[
+            ("DATABASE_URL", "postgres://db"),
+            ("JWT_SECRET", SECRET),
+            ("UPLOADS_DIR", "/var/lib/xetaravel"),
+        ]))
+        .unwrap();
+        assert_eq!(config.uploads_dir, PathBuf::from("/var/lib/xetaravel"));
     }
 
     #[test]

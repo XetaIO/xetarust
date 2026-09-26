@@ -18,11 +18,11 @@ frontend/src/
 │   │                           redirect.ts, actions.ts (login, register, logout, changeUserRole), queries.ts (getUsers),
 │   │                           components/{auth-form, role-toggle}
 │   ├── publishing/             queries.ts (articles, catégories, admin), actions.ts (saveArticle, deleteArticle, saveCategory, deleteCategory),
-│   │                           components/{article-card, article-list, category-nav, markdown, article-form, category-form}
+│   │                           cover.ts (coverUrl), components/{article-card, article-cover, article-list, category-nav, markdown, article-form, category-form}
 │   └── discussion/             queries.ts (getComments), actions.ts (postComment, deleteComment),
 │                               components/{comment-form, comment-section}
 ├── lib/
-│   ├── api/client.ts           apiFetch() server-only, ajoute le Bearer depuis le cookie
+│   ├── api/client.ts           apiFetch() server-only, ajoute le Bearer depuis le cookie ; apiUpload() (PUT octets bruts) ; apiProxy() (relaie une réponse binaire publique)
 │   ├── api/errors.ts           ApiError (miroir de ErrorBody), isApiError, orNull
 │   ├── api/session-cookie.ts   nom du cookie httpOnly (partagé client / proxy / identity)
 │   ├── forms.ts                FormState + helpers de lecture de FormData
@@ -42,6 +42,7 @@ frontend/src/
 - Formulaires : `useActionState` + `FieldError` / `FormMessage` pour afficher `fields` renvoyés par l'API. Les messages de validation viennent du backend (source de vérité).
 - Suppressions : composant `ConfirmAction` (AlertDialog + toast) avec une Server Action liée (`action.bind(null, id)`).
 - L'autorisation réelle est faite par l'API Rust ; `proxy.ts` et `requireAdmin()` ne sont que du confort UX (404 pour les membres sur `/dashboard`).
+- **Médias** : les images servies par l'API (couvertures d'articles) passent par le route handler `app/media/covers/[name]/route.ts` (`apiProxy`) ; utiliser `coverUrl(name)` (`features/publishing/cover.ts`) avec `next/image`, qui optimise (tailles, WebP/AVIF). Les chemins optimisables sont listés dans `images.localPatterns` (`next.config.ts`). L'upload passe par la Server Action `saveArticle` (`bodySizeLimit: "6mb"`).
 - La page d'accueil doit rester **statique** (pas de `cookies()` ni d'appel API) ; le header avec session n'est utilisé que dans blog/auth/dashboard.
 
 ## UI & animations

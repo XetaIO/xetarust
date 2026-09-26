@@ -37,3 +37,4 @@ uuid.workspace = true
 migration = { workspace = true, features = ["test-support"] }
 http-body-util.workspace = true
 tower.workspace = true
+tempfile.workspace = true

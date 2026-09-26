@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use axum::Json;
+use axum::body::Bytes;
 use axum::extract::State;
 use axum::http::StatusCode;
 use uuid::Uuid;
@@ -65,6 +66,31 @@ pub async fn delete_article(
 ) -> ApiResult<StatusCode> {
     publishing.delete_article.execute(principal, id).await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// `PUT /api/admin/articles/{id}/cover` — sets the cover image. The body is
+/// the raw image file (JPEG, PNG or WebP).
+pub async fn upload_cover(
+    State(publishing): State<Arc<PublishingModule>>,
+    AdminPrincipal(principal): AdminPrincipal,
+    PathParam(id): PathParam<Uuid>,
+    body: Bytes,
+) -> ApiResult<Json<ArticleDto>> {
+    Ok(Json(
+        publishing
+            .upload_cover
+            .execute(principal, id, &body)
+            .await?,
+    ))
+}
+
+/// `DELETE /api/admin/articles/{id}/cover` — removes the cover image.
+pub async fn remove_cover(
+    State(publishing): State<Arc<PublishingModule>>,
+    AdminPrincipal(principal): AdminPrincipal,
+    PathParam(id): PathParam<Uuid>,
+) -> ApiResult<Json<ArticleDto>> {
+    Ok(Json(publishing.remove_cover.execute(principal, id).await?))
 }
 
 /// `POST /api/admin/categories` — creates a category.

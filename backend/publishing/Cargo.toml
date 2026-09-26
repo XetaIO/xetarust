@@ -15,6 +15,8 @@ sea-orm.workspace = true
 sea-orm-migration.workspace = true
 serde.workspace = true
 slug.workspace = true
+tokio = { workspace = true, features = ["fs"] }
+tracing.workspace = true
 ts-rs.workspace = true
 uuid.workspace = true
 validator.workspace = true
@@ -23,4 +25,4 @@ validator.workspace = true
 # Test-only: the schema aggregator provides a migrated test database.
 migration = { workspace = true, features = ["test-support"] }
 mockall.workspace = true
-tokio.workspace = true
+tempfile.workspace = true

@@ -4,8 +4,11 @@ import type { UserDto } from "./UserDto";
 /**
  * Returned after a successful registration or login.
  */
-export type AuthResponse = { 
-/**
- * JWT to send as `Authorization: Bearer <token>`.
- */
-token: string, expires_at: string, user: UserDto, };
+export type AuthResponse = {
+  /**
+   * JWT to send as `Authorization: Bearer <token>`.
+   */
+  token: string;
+  expires_at: string;
+  user: UserDto;
+};

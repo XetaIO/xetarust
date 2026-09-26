@@ -70,3 +70,48 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
   }
   return data as T;
 }
+
+/**
+ * Sends a raw file to the Rust API with `PUT` (JWT forwarded from the session
+ * cookie) and returns the parsed JSON.
+ *
+ * @throws {ApiError} when the API answers with a non-2xx status.
+ */
+export async function apiUpload<T>(path: string, file: Blob): Promise<T> {
+  const response = await fetch(buildUrl(path, undefined), {
+    method: "PUT",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": file.type || "application/octet-stream",
+      ...(await authorizationHeader()),
+    },
+    body: file,
+    cache: "no-store",
+  });
+
+  const data: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new ApiError(response.status, data as ConstructorParameters<typeof ApiError>[1]);
+  }
+  return data as T;
+}
+
+/** Response headers of the API relayed as-is by {@link apiProxy}. */
+const PROXIED_HEADERS = ["Content-Type", "Cache-Control", "Content-Length"];
+
+/**
+ * Relays a public, non-JSON API response (e.g. an image) to the browser:
+ * same status, body and caching headers. Used by route handlers so the
+ * browser never talks to the Rust API directly.
+ */
+export async function apiProxy(path: string): Promise<Response> {
+  const response = await fetch(buildUrl(path, undefined), { cache: "no-store" });
+  const headers = new Headers();
+  for (const name of PROXIED_HEADERS) {
+    const value = response.headers.get(name);
+    if (value) {
+      headers.set(name, value);
+    }
+  }
+  return new Response(response.body, { status: response.status, headers });
+}

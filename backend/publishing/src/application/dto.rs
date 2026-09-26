@@ -73,6 +73,8 @@ pub struct ArticleSummaryDto {
     pub title: String,
     pub slug: String,
     pub excerpt: Option<String>,
+    /// File name of the cover image, served by `GET /api/covers/{name}`.
+    pub cover_image: Option<String>,
     pub author: AuthorDto,
     pub category: CategoryDto,
     pub reading_time_minutes: u32,
@@ -91,6 +93,7 @@ impl From<&ArticleView> for ArticleSummaryDto {
             title: article.title.clone(),
             slug: article.slug.to_string(),
             excerpt: article.excerpt.clone(),
+            cover_image: article.cover.as_ref().map(ToString::to_string),
             author: (&view.author).into(),
             category: (&view.category).into(),
             reading_time_minutes: article.reading_time_minutes(),

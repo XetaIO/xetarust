@@ -7,25 +7,33 @@
 
 use axum::Router;
 use axum::body::Body;
-use axum::http::{Method, Request, StatusCode, header};
+use axum::body::Bytes;
+use axum::http::{HeaderMap, Method, Request, StatusCode, header};
 use http_body_util::BodyExt;
 use migration::testing::test_database;
 use serde_json::{Value, json};
+use tempfile::TempDir;
 use tower::ServiceExt;
 use uuid::Uuid;
 use xetaravel_app::{AppState, Config, router};
 use xetaravel_identity::JwtSettings;
 
+/// Header of a PNG file: enough for the format detection.
+const PNG: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3];
+
 /// Test harness holding the router and the application state.
 struct TestApp {
     router: Router,
     state: AppState,
+    /// Temporary uploads directory, removed when the harness is dropped.
+    uploads: TempDir,
 }
 
 impl TestApp {
     /// Connects to the (migrated) test database and builds the production router.
     async fn start() -> Self {
         let db = test_database().await;
+        let uploads = tempfile::tempdir().unwrap();
         let config = Config {
             database_url: String::new(),
             jwt: JwtSettings {
@@ -34,13 +42,44 @@ impl TestApp {
             },
             app_addr: "127.0.0.1:0".into(),
             cors_origin: "http://localhost:3000".into(),
+            uploads_dir: uploads.path().to_path_buf(),
         };
         let state = AppState::build(db, &config);
 
         Self {
             router: router(state.clone()),
             state,
+            uploads,
         }
+    }
+
+    /// Sends a request with a raw body and returns the status, headers and body bytes.
+    async fn call_raw(
+        &self,
+        method: Method,
+        uri: &str,
+        token: Option<&str>,
+        body: Vec<u8>,
+    ) -> (StatusCode, HeaderMap, Bytes) {
+        let mut request = Request::builder().method(method).uri(uri);
+        if let Some(token) = token {
+            request = request.header(header::AUTHORIZATION, format!("Bearer {token}"));
+        }
+        let request = request
+            .header(header::CONTENT_TYPE, "application/octet-stream")
+            .body(Body::from(body))
+            .unwrap();
+
+        let response = self.router.clone().oneshot(request).await.unwrap();
+        let status = response.status();
+        let headers = response.headers().clone();
+        let bytes = response.into_body().collect().await.unwrap().to_bytes();
+        (status, headers, bytes)
+    }
+
+    /// Tells whether the cover file `name` exists in the uploads directory.
+    fn cover_file_exists(&self, name: &str) -> bool {
+        self.uploads.path().join("covers").join(name).is_file()
     }
 
     /// Sends a request and returns the status with the parsed JSON body (Null when empty).
@@ -428,4 +467,102 @@ async fn malformed_requests_get_json_errors() {
         .await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
     assert!(body["fields"]["body"].is_array());
+}
+
+#[tokio::test]
+async fn admin_manages_article_covers() {
+    let app = TestApp::start().await;
+    let admin = app.register_admin().await;
+    let article = app.publish_article(&admin).await;
+    assert_eq!(article["cover_image"], Value::Null);
+    let uri = format!(
+        "/api/admin/articles/{}/cover",
+        article["id"].as_str().unwrap()
+    );
+
+    // Upload: the article references a new file served publicly.
+    let (status, _, body) = app
+        .call_raw(Method::PUT, &uri, Some(&admin), PNG.to_vec())
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    let updated: Value = serde_json::from_slice(&body).unwrap();
+    let first = updated["cover_image"].as_str().unwrap().to_owned();
+    assert!(first.ends_with(".png"));
+
+    let (status, headers, bytes) = app
+        .call_raw(Method::GET, &format!("/api/covers/{first}"), None, vec![])
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(headers[header::CONTENT_TYPE], "image/png");
+    assert!(
+        headers[header::CACHE_CONTROL]
+            .to_str()
+            .unwrap()
+            .contains("immutable")
+    );
+    assert_eq!(&bytes[..], PNG);
+
+    // The public listing exposes the cover.
+    let slug = article["slug"].as_str().unwrap();
+    let (_, public) = app
+        .call(Method::GET, &format!("/api/articles/{slug}"), None, None)
+        .await;
+    assert_eq!(public["cover_image"], first.as_str());
+
+    // Replacing the cover deletes the previous file.
+    let (status, _, body) = app
+        .call_raw(Method::PUT, &uri, Some(&admin), PNG.to_vec())
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    let second = serde_json::from_slice::<Value>(&body).unwrap()["cover_image"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    assert_ne!(first, second);
+    assert!(!app.cover_file_exists(&first));
+    assert!(app.cover_file_exists(&second));
+
+    // Removal detaches the cover and deletes its file.
+    let (status, removed) = app.call(Method::DELETE, &uri, Some(&admin), None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(removed["cover_image"], Value::Null);
+    assert!(!app.cover_file_exists(&second));
+    let (status, _, _) = app
+        .call_raw(Method::GET, &format!("/api/covers/{second}"), None, vec![])
+        .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn cover_uploads_are_validated() {
+    let app = TestApp::start().await;
+    let admin = app.register_admin().await;
+    let article = app.publish_article(&admin).await;
+    let uri = format!(
+        "/api/admin/articles/{}/cover",
+        article["id"].as_str().unwrap()
+    );
+
+    let (status, _, body) = app
+        .call_raw(Method::PUT, &uri, Some(&admin), b"not an image".to_vec())
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    let error: Value = serde_json::from_slice(&body).unwrap();
+    assert!(error["fields"]["cover"].is_array());
+
+    let (member, _) = app.register().await;
+    let (status, _, _) = app
+        .call_raw(Method::PUT, &uri, Some(&member), PNG.to_vec())
+        .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+
+    let (status, _, _) = app
+        .call_raw(
+            Method::GET,
+            "/api/covers/..%2F..%2Fsecret.png",
+            None,
+            vec![],
+        )
+        .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
 }

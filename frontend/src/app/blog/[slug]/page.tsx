@@ -1,5 +1,6 @@
 import { ArrowLeft, Clock } from "lucide-react";
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -7,13 +8,23 @@ import { CommentSection } from "@/features/discussion/components/comment-section
 import { getComments } from "@/features/discussion/queries";
 import { getCurrentUser } from "@/features/identity/session";
 import { Markdown } from "@/features/publishing/components/markdown";
+import { coverUrl } from "@/features/publishing/cover";
 import { getArticle } from "@/features/publishing/queries";
 import { formatDate } from "@/lib/format";
 
-/** Uses the article title and excerpt as metadata. */
+/** Uses the article title, excerpt and cover image as metadata. */
 export async function generateMetadata({ params }: PageProps<"/blog/[slug]">): Promise<Metadata> {
     const article = await getArticle((await params).slug);
-    return article ? { title: article.title, description: article.excerpt ?? undefined } : {};
+    if (!article) {
+        return {};
+    }
+    return {
+        title: article.title,
+        description: article.excerpt ?? undefined,
+        openGraph: article.cover_image
+            ? { images: [{ url: coverUrl(article.cover_image), alt: article.title }] }
+            : undefined,
+    };
 }
 
 /** A published article with its comments. */
@@ -55,6 +66,19 @@ export default async function ArticlePage({ params }: PageProps<"/blog/[slug]">)
                     </span>
                 </p>
             </header>
+
+            {article.cover_image && (
+                <figure className="relative mb-12 aspect-2/1 overflow-hidden rounded-2xl border border-white/5 bg-card">
+                    <Image
+                        src={coverUrl(article.cover_image)}
+                        alt={article.title}
+                        fill
+                        preload
+                        sizes="(min-width: 768px) 768px, 100vw"
+                        className="object-cover"
+                    />
+                </figure>
+            )}
 
             <Markdown source={article.content} />
 

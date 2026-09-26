@@ -3,8 +3,11 @@
 /**
  * Body used to create or update a category.
  */
-export type UpsertCategoryRequest = { name: string, 
-/**
- * Derived from the name when empty.
- */
-slug?: string | null, description?: string | null, };
+export type UpsertCategoryRequest = {
+  name: string;
+  /**
+   * Derived from the name when empty.
+   */
+  slug?: string | null;
+  description?: string | null;
+};

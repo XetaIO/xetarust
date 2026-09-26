@@ -4,4 +4,4 @@ import type { AuthorDto } from "../shared/AuthorDto";
 /**
  * A comment with its author.
  */
-export type CommentDto = { id: string, article_id: string, author: AuthorDto, content: string, created_at: string, };
+export type CommentDto = { id: string; article_id: string; author: AuthorDto; content: string; created_at: string };

@@ -8,12 +8,15 @@ mod delete_article;
 mod delete_category;
 mod find_published_article;
 mod get_article;
+mod get_cover;
 mod get_published_article;
 mod list_articles;
 mod list_categories;
 mod list_published_articles;
+mod remove_cover;
 mod update_article;
 mod update_category;
+mod upload_cover;
 
 pub use create_article::CreateArticle;
 pub use create_category::CreateCategory;
@@ -21,23 +24,26 @@ pub use delete_article::DeleteArticle;
 pub use delete_category::DeleteCategory;
 pub use find_published_article::FindPublishedArticle;
 pub use get_article::GetArticle;
+pub use get_cover::GetCover;
 pub use get_published_article::GetPublishedArticle;
 pub use list_articles::ListArticles;
 pub use list_categories::ListCategories;
 pub use list_published_articles::ListPublishedArticles;
+pub use remove_cover::RemoveCover;
 pub use update_article::UpdateArticle;
 pub use update_category::UpdateCategory;
+pub use upload_cover::UploadCover;
 
 use validator::Validate;
 use xetaravel_kernel::text::non_blank;
 use xetaravel_kernel::{AppError, AppResult};
 
 use crate::application::dto::{ArticleDto, UpsertArticleRequest};
-use crate::application::ports::AuthorDirectory;
+use crate::application::ports::{AuthorDirectory, CoverStorage};
 use crate::application::views::with_author;
 use crate::domain::{
     ArticleDraft, ArticleId, ArticleRepository, CategorizedArticle, CategoryId, CategoryRepository,
-    Slug,
+    CoverImage, Slug,
 };
 
 /// Parses an optional slug typed by a user; blank values mean "no slug".
@@ -93,6 +99,14 @@ async fn find_published(
         .find_categorized_by_slug(&slug)
         .await?
         .filter(|entry| entry.article.is_published()))
+}
+
+/// Deletes the file of a cover that is no longer referenced. Best effort: a
+/// failure only leaves an orphan file behind, so it is logged, not returned.
+async fn discard_cover(covers: &dyn CoverStorage, cover: &CoverImage) {
+    if let Err(error) = covers.delete(cover).await {
+        tracing::warn!(%cover, %error, "could not delete a cover image file");
+    }
 }
 
 /// Error returned when an article does not exist (or must stay hidden).

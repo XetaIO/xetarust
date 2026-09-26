@@ -1,6 +1,9 @@
 # Rust
 /target
 
+# Uploaded files (UPLOADS_DIR)
+storage/
+
 # Environment
 .env
 .env.local

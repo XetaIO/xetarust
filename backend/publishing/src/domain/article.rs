@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use xetaravel_kernel::DomainResult;
 use xetaravel_kernel::text::{validate_optional_text, validate_text};
 
-use super::{ArticleId, AuthorId, CategoryId, Slug};
+use super::{ArticleId, AuthorId, CategoryId, CoverImage, Slug};
 
 /// Maximum length of an article title.
 const TITLE_MAX: usize = 200;
@@ -36,6 +36,8 @@ pub struct Article {
     pub slug: Slug,
     pub excerpt: Option<String>,
     pub content: String,
+    /// File name of the cover image, if any.
+    pub cover: Option<CoverImage>,
     /// `Some` when the article is publicly visible.
     pub published_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
@@ -63,6 +65,7 @@ impl Article {
             slug,
             excerpt: validate_optional_text("excerpt", draft.excerpt.as_deref(), EXCERPT_MAX)?,
             content: validate_text("content", &draft.content, 1, CONTENT_MAX)?,
+            cover: None,
             published_at: draft.publish.then_some(now),
             created_at: now,
             updated_at: now,
@@ -92,6 +95,22 @@ impl Article {
         Ok(())
     }
 
+    /// Sets a new cover image and returns the previous one, whose file must
+    /// then be deleted by the caller.
+    pub fn replace_cover(&mut self, cover: CoverImage, now: DateTime<Utc>) -> Option<CoverImage> {
+        self.updated_at = now;
+        self.cover.replace(cover)
+    }
+
+    /// Removes the cover image and returns it (if any) so its file can be deleted.
+    pub fn remove_cover(&mut self, now: DateTime<Utc>) -> Option<CoverImage> {
+        let previous = self.cover.take();
+        if previous.is_some() {
+            self.updated_at = now;
+        }
+        previous
+    }
+
     /// Makes the article public. Publishing twice keeps the first date.
     pub fn publish(&mut self, now: DateTime<Utc>) {
         self.published_at.get_or_insert(now);
@@ -119,6 +138,7 @@ mod tests {
     use chrono::Duration;
 
     use super::*;
+    use crate::domain::ImageFormat;
 
     /// Builds a valid draft for the tests.
     fn draft(publish: bool) -> ArticleDraft {
@@ -184,6 +204,50 @@ mod tests {
 
         assert!(!article.is_published());
         assert_eq!(article.slug.as_str(), "new-slug");
+    }
+
+    #[test]
+    fn replace_cover_returns_the_previous_one() {
+        let created = Utc::now();
+        let mut article = Article::write(AuthorId::generate(), draft(false), created).unwrap();
+        assert_eq!(article.cover, None);
+
+        let first = CoverImage::new(ImageFormat::Png);
+        let later = created + Duration::hours(1);
+        assert_eq!(article.replace_cover(first.clone(), later), None);
+        assert_eq!(article.cover.as_ref(), Some(&first));
+        assert_eq!(article.updated_at, later);
+
+        let second = CoverImage::new(ImageFormat::Jpeg);
+        assert_eq!(article.replace_cover(second.clone(), later), Some(first));
+        assert_eq!(article.cover, Some(second));
+    }
+
+    #[test]
+    fn remove_cover_returns_the_removed_one() {
+        let created = Utc::now();
+        let mut article = Article::write(AuthorId::generate(), draft(false), created).unwrap();
+        let later = created + Duration::hours(1);
+
+        assert_eq!(article.remove_cover(later), None);
+        assert_eq!(article.updated_at, created);
+
+        let cover = CoverImage::new(ImageFormat::Webp);
+        article.replace_cover(cover.clone(), created);
+        assert_eq!(article.remove_cover(later), Some(cover));
+        assert_eq!(article.cover, None);
+        assert_eq!(article.updated_at, later);
+    }
+
+    #[test]
+    fn revise_keeps_the_cover() {
+        let mut article = Article::write(AuthorId::generate(), draft(false), Utc::now()).unwrap();
+        let cover = CoverImage::new(ImageFormat::Png);
+        article.replace_cover(cover.clone(), Utc::now());
+
+        article.revise(draft(true), Utc::now()).unwrap();
+
+        assert_eq!(article.cover, Some(cover));
     }
 
     #[test]

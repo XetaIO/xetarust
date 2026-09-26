@@ -16,6 +16,7 @@ pub struct Model {
     pub excerpt: Option<String>,
     #[sea_orm(column_type = "Text")]
     pub content: String,
+    pub cover_image: Option<String>,
     pub published_at: Option<DateTimeUtc>,
     pub created_at: DateTimeUtc,
     pub updated_at: DateTimeUtc,

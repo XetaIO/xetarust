@@ -3,4 +3,4 @@
 /**
  * Body of `POST /api/articles/{slug}/comments`.
  */
-export type CreateCommentRequest = { content: string, };
+export type CreateCommentRequest = { content: string };

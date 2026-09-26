@@ -12,7 +12,7 @@ export function Contact() {
                 <div className="relative overflow-hidden rounded-[2.5rem] border border-white/10 p-10 text-center sm:p-20">
                     <div
                         aria-hidden
-                        className="animate-aurora absolute -top-1/2 left-1/2 size-[40rem] -translate-x-1/2 rounded-full bg-brand-orange/30 blur-[100px]"
+                        className="animate-aurora absolute -top-1/2 left-1/2 size-160 -translate-x-1/2 rounded-full bg-brand-orange/30 blur-[100px]"
                     />
                     <div className="relative">
                         <p className="font-mono text-xs tracking-[0.3em] text-brand-amber uppercase">Contact</p>

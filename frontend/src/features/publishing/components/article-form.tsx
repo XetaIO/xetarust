@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { type ChangeEvent, useActionState, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { saveArticle } from "@/features/publishing/actions";
+import { coverUrl } from "@/features/publishing/cover";
 import type { FormState } from "@/lib/forms";
 import { cn } from "@/lib/utils";
 import type { ArticleDto } from "@/types/api/publishing/ArticleDto";
@@ -20,10 +21,12 @@ interface ArticleFormProps {
     categories: CategoryDto[];
     /** Article being edited; `undefined` when writing a new one. */
     article?: ArticleDto;
+    /** Cover error to display initially (cover rejected right after creation). */
+    coverError?: string;
 }
 
 /** Editor of an article with a live Markdown preview. */
-export function ArticleForm({ categories, article }: ArticleFormProps) {
+export function ArticleForm({ categories, article, coverError }: ArticleFormProps) {
     const [state, action, pending] = useActionState<FormState, FormData>(
         saveArticle.bind(null, article?.id ?? null),
         null,
@@ -90,6 +93,11 @@ export function ArticleForm({ categories, article }: ArticleFormProps) {
                 <FieldError messages={errors.category_id} />
             </div>
 
+            <CoverField
+                current={article?.cover_image ?? null}
+                errors={errors.cover ?? (state === null && coverError ? [coverError] : undefined)}
+            />
+
             <div className="space-y-2">
                 <Label htmlFor="excerpt">Excerpt</Label>
                 <Textarea id="excerpt" name="excerpt" rows={2} defaultValue={article?.excerpt ?? ""} maxLength={500} />
@@ -151,5 +159,76 @@ export function ArticleForm({ categories, article }: ArticleFormProps) {
                 </Link>
             </div>
         </form>
+    );
+}
+
+interface CoverFieldProps {
+    /** File name of the current cover image, if any. */
+    current: string | null;
+    errors?: string[];
+}
+
+/** File input of the cover image with a 16:9 preview and a "remove" option. */
+function CoverField({ current, errors }: CoverFieldProps) {
+    const [selected, setSelected] = useState<string | null>(null);
+    const [remove, setRemove] = useState(false);
+
+    useEffect(() => {
+        return () => {
+            if (selected) {
+                URL.revokeObjectURL(selected);
+            }
+        };
+    }, [selected]);
+
+    /** Previews the newly chosen file (or falls back to the current cover). */
+    function handleChange(event: ChangeEvent<HTMLInputElement>) {
+        const file = event.target.files?.[0];
+        setSelected(file ? URL.createObjectURL(file) : null);
+    }
+
+    const preview = selected ?? (current && !remove ? coverUrl(current) : null);
+
+    return (
+        <div className="space-y-2">
+            <Label htmlFor="cover">Cover image</Label>
+            <div className="grid gap-4 md:grid-cols-[16rem_1fr] md:items-start">
+                <div className="relative aspect-video overflow-hidden rounded-lg border border-white/10 bg-card">
+                    {preview ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- blob: previews cannot go through next/image
+                        <img src={preview} alt="Cover preview" className="size-full object-cover" />
+                    ) : (
+                        <span className="flex size-full items-center justify-center text-xs text-muted-foreground">
+                            No cover
+                        </span>
+                    )}
+                </div>
+                <div className="space-y-3">
+                    <Input
+                        id="cover"
+                        name="cover"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={handleChange}
+                        aria-invalid={!!errors}
+                    />
+                    <p className="text-xs text-muted-foreground">JPEG, PNG or WebP, 5 MB max. Displayed in 16:9.</p>
+                    {current && (
+                        <label className="flex items-center gap-3 text-sm">
+                            <input
+                                type="checkbox"
+                                name="remove_cover"
+                                checked={remove}
+                                onChange={(event) => setRemove(event.target.checked)}
+                                disabled={selected !== null}
+                                className="size-4 accent-brand-orange"
+                            />
+                            Remove cover
+                        </label>
+                    )}
+                    <FieldError messages={errors} />
+                </div>
+            </div>
+        </div>
     );
 }

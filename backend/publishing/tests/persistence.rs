@@ -12,7 +12,7 @@ use xetaravel_kernel::DomainError;
 use xetaravel_kernel::pagination::PageRequest;
 use xetaravel_publishing::domain::{
     Article, ArticleDraft, ArticleFilter, ArticleRepository, AuthorId, Category,
-    CategoryRepository, Slug,
+    CategoryRepository, CoverImage, ImageFormat, Slug,
 };
 use xetaravel_publishing::infrastructure::persistence::{
     SeaOrmArticleRepository, SeaOrmCategoryRepository,
@@ -174,10 +174,18 @@ async fn article_repository_update_and_delete() {
 
     article.publish(now());
     article.title = "Updated title".into();
+    article.replace_cover(CoverImage::new(ImageFormat::Webp), now());
     repo.update(&article).await.unwrap();
     assert_eq!(
         repo.find_by_id(article.id).await.unwrap(),
         Some(article.clone())
+    );
+
+    article.remove_cover(now());
+    repo.update(&article).await.unwrap();
+    assert_eq!(
+        repo.find_by_id(article.id).await.unwrap().unwrap().cover,
+        None
     );
 
     let error = SeaOrmCategoryRepository::new(db.clone())

@@ -8,7 +8,7 @@ use xetaravel_kernel::DomainResult;
 use xetaravel_kernel::persistence::corrupted;
 
 use super::entities::{article, category};
-use crate::domain::{Article, Category, Slug};
+use crate::domain::{Article, Category, CoverImage, Slug};
 
 /// Converts a `categories` row into a domain category.
 pub(super) fn to_category(model: category::Model) -> DomainResult<Category> {
@@ -44,6 +44,12 @@ pub(super) fn to_article(model: article::Model) -> DomainResult<Article> {
         slug: Slug::parse(&model.slug).map_err(|e| corrupted("articles", e))?,
         excerpt: model.excerpt,
         content: model.content,
+        cover: model
+            .cover_image
+            .as_deref()
+            .map(CoverImage::parse)
+            .transpose()
+            .map_err(|e| corrupted("articles", e))?,
         published_at: model.published_at,
         created_at: model.created_at,
         updated_at: model.updated_at,
@@ -60,6 +66,7 @@ pub(super) fn from_article(article: &Article) -> article::ActiveModel {
         slug: Set(article.slug.to_string()),
         excerpt: Set(article.excerpt.clone()),
         content: Set(article.content.clone()),
+        cover_image: Set(article.cover.as_ref().map(|cover| cover.to_string())),
         published_at: Set(article.published_at),
         created_at: Set(article.created_at),
         updated_at: Set(article.updated_at),

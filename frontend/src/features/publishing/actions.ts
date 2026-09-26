@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, apiUpload } from "@/lib/api/client";
 import { field, type FormState, optionalField, toFormState } from "@/lib/forms";
 import type { ArticleDto } from "@/types/api/publishing/ArticleDto";
 import type { CategoryDto } from "@/types/api/publishing/CategoryDto";
@@ -12,7 +12,11 @@ import type { UpsertCategoryRequest } from "@/types/api/publishing/UpsertCategor
 
 // ------------------------------------------------------------------ Articles
 
-/** Creates (`id === null`) or updates an article, then returns to the list. */
+/**
+ * Creates (`id === null`) or updates an article, then applies the cover image
+ * change (upload of the `cover` file or `remove_cover` checkbox) and returns
+ * to the list.
+ */
 export async function saveArticle(id: string | null, _: FormState, data: FormData): Promise<FormState> {
   const body: UpsertArticleRequest = {
     category_id: field(data, "category_id"),
@@ -23,8 +27,9 @@ export async function saveArticle(id: string | null, _: FormState, data: FormDat
     publish: data.get("publish") === "on",
   };
 
+  let saved: ArticleDto;
   try {
-    await apiFetch<ArticleDto>(id ? `/api/admin/articles/${id}` : "/api/admin/articles", {
+    saved = await apiFetch<ArticleDto>(id ? `/api/admin/articles/${id}` : "/api/admin/articles", {
       method: id ? "PUT" : "POST",
       body,
       auth: true,
@@ -33,9 +38,37 @@ export async function saveArticle(id: string | null, _: FormState, data: FormDat
     return toFormState(error);
   }
 
+  const coverError = await saveCover(saved.id, data);
   revalidatePath("/blog", "layout");
   revalidatePath("/dashboard", "layout");
+  if (coverError) {
+    if (id) {
+      return coverError;
+    }
+    // The article now exists: keep editing it instead of creating a duplicate.
+    const message = coverError.fields?.cover?.join(", ") ?? coverError.message ?? "";
+    redirect(`/dashboard/articles/${saved.id}/edit?cover_error=${encodeURIComponent(message)}`);
+  }
   redirect("/dashboard/articles");
+}
+
+/**
+ * Uploads the chosen cover image of an article, or removes the current one
+ * when requested. Returns the form state of a rejected change, `null` otherwise.
+ */
+async function saveCover(articleId: string, data: FormData): Promise<FormState> {
+  const cover = data.get("cover");
+  const path = `/api/admin/articles/${articleId}/cover`;
+  try {
+    if (cover instanceof File && cover.size > 0) {
+      await apiUpload<ArticleDto>(path, cover);
+    } else if (data.get("remove_cover") === "on") {
+      await apiFetch<ArticleDto>(path, { method: "DELETE", auth: true });
+    }
+  } catch (error) {
+    return toFormState(error);
+  }
+  return null;
 }
 
 /** Deletes an article (its comments are removed by the API). */
