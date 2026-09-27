@@ -1,0 +1,8 @@
+# Build context of backend/Dockerfile (the Cargo workspace lives at the root).
+target/
+frontend/
+storage/
+.env
+.git/
+.github/
+.claude/

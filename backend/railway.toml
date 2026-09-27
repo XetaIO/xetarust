@@ -1,0 +1,13 @@
+# Railway config-as-code of the `backend` service (root directory: repository
+# root, config file path: backend/railway.toml).
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "backend/Dockerfile"
+# Matched from the repository root.
+watchPatterns = ["/backend/**", "/Cargo.toml", "/Cargo.lock"]
+
+[deploy]
+healthcheckPath = "/api/health"
+# The migrations run at startup, before the server listens.
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"

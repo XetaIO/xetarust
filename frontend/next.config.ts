@@ -11,6 +11,8 @@ if (!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) {
 }
 
 const nextConfig: NextConfig = {
+  // Self-contained `server.js` for the Docker image (see Dockerfile).
+  output: "standalone",
   images: {
     // Only these local paths can be optimized by `next/image`.
     localPatterns: [

@@ -22,11 +22,9 @@ use xetaravel_kernel::persistence;
 async fn main() -> ExitCode {
     dotenvy::dotenv().ok();
     tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-                "xetaravel_app=info,xetaravel_kernel=info,tower_http=info".into()
-            }),
-        )
+        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+            "xetaravel=info,xetaravel_app=info,xetaravel_kernel=info,tower_http=info".into()
+        }))
         .init();
 
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -62,7 +60,7 @@ async fn bootstrap() -> Result<(Config, AppState), Box<dyn std::error::Error>> {
     Ok((config, state))
 }
 
-/// Starts the HTTP server until Ctrl+C.
+/// Starts the HTTP server until Ctrl+C or SIGTERM.
 async fn serve() -> CliResult {
     let (config, state) = bootstrap().await?;
 
@@ -86,9 +84,37 @@ async fn serve() -> CliResult {
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),
     )
-    .with_graceful_shutdown(async {
-        tokio::signal::ctrl_c().await.ok();
-    })
+    .with_graceful_shutdown(shutdown_signal())
     .await?;
+    tracing::info!("server stopped");
     Ok(())
+}
+
+/// Resolves on Ctrl+C or, on Unix, on SIGTERM (sent by Docker / Railway to
+/// stop the container), so in-flight requests finish before exiting.
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c().await.ok();
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            Ok(mut signal) => {
+                signal.recv().await;
+            }
+            Err(error) => {
+                tracing::warn!("cannot listen for SIGTERM: {error}");
+                std::future::pending::<()>().await;
+            }
+        }
+    };
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        () = ctrl_c => {},
+        () = terminate => {},
+    }
+    tracing::info!("shutdown signal received, draining connections");
 }

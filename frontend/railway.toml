@@ -1,0 +1,11 @@
+# Railway config-as-code of the `frontend` service (root directory: frontend,
+# config file path: frontend/railway.toml).
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+# Matched from the repository root, even with a root directory set.
+watchPatterns = ["/frontend/**"]
+
+[deploy]
+healthcheckPath = "/"
+restartPolicyType = "ON_FAILURE"

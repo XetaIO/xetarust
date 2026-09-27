@@ -30,6 +30,47 @@ Next.js refuse to start without them) and a per-IP rate limit (`AUTH_RATE_LIMIT_
 > reverse proxy in front of Next.js overwrite `X-Real-IP` / `X-Forwarded-For` with the real client
 > address — otherwise clients could spoof their IP and bypass the rate limit.
 
+## Deployment (Railway)
+
+One Railway project, three services, deployed from `main` (enable _Wait for CI_):
+
+| Service    | Source                                                               | Networking                            |
+| ---------- | -------------------------------------------------------------------- | ------------------------------------- |
+| `Postgres` | PostgreSQL template                                                  | private only                          |
+| `backend`  | root directory `/`, config file `/backend/railway.toml`              | private only (**no public domain**)   |
+| `frontend` | root directory `/frontend`, config file `/frontend/railway.toml`     | public domain                         |
+
+The `backend` service gets a **volume mounted on `/data`**: cover images are stored in
+`/data/uploads/covers` and survive redeployments (a service with a volume runs a single replica).
+Migrations run at startup; the backend is only reachable by Next.js through the private network, and
+the Railway edge sets `X-Real-IP` with the real client address.
+
+`backend` variables:
+
+```bash
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+JWT_SECRET=...                     # openssl rand -base64 48
+TURNSTILE_SECRET=...               # real Cloudflare Turnstile secret
+APP_ADDR=[::]:8080                 # the private network is IPv6
+UPLOADS_DIR=/data/uploads
+CORS_ORIGIN=https://${{frontend.RAILWAY_PUBLIC_DOMAIN}}
+RUST_LOG=xetaravel=info,xetaravel_app=info,xetaravel_kernel=info,tower_http=info
+```
+
+`frontend` variables (`NEXT_PUBLIC_TURNSTILE_SITE_KEY` is read at build time):
+
+```bash
+API_URL=http://${{backend.RAILWAY_PRIVATE_DOMAIN}}:8080
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=... # real site key; add the public domain to the Turnstile widget
+```
+
+Local check of the images:
+
+```bash
+docker build -f backend/Dockerfile -t xetaravel-backend .
+docker build --build-arg NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA -t xetaravel-frontend frontend
+```
+
 ## Quality
 
 ```bash
