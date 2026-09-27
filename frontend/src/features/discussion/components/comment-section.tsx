@@ -33,7 +33,7 @@ export function CommentSection({ slug, comments, viewer }: CommentSectionProps) 
                 {comments.map((comment) => (
                     <li key={comment.id} className="rounded-2xl border border-white/5 bg-card/50 p-4 sm:p-5">
                         <div className="flex items-start justify-between gap-4">
-                            <p className="min-w-0 text-sm break-words">
+                            <p className="min-w-0 text-sm wrap-break-word">
                                 <span className="font-medium">{comment.author.username}</span>
                                 <span className="text-muted-foreground"> · {formatDate(comment.created_at)}</span>
                             </p>
@@ -47,7 +47,9 @@ export function CommentSection({ slug, comments, viewer }: CommentSectionProps) 
                                 </ConfirmAction>
                             )}
                         </div>
-                        <p className="mt-2 break-words whitespace-pre-line text-muted-foreground">{comment.content}</p>
+                        <p className="mt-2 wrap-break-word whitespace-pre-line text-muted-foreground">
+                            {comment.content}
+                        </p>
                     </li>
                 ))}
                 {comments.length === 0 && <li className="text-muted-foreground">No comment yet — be the first!</li>}

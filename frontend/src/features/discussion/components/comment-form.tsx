@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { postComment } from "@/features/discussion/actions";
 import type { FormState } from "@/lib/forms";
+import { Pencil, RotateCw } from "lucide-react";
 
 /** Form posting a comment on the article `slug`. */
 export function CommentForm({ slug }: { slug: string }) {
@@ -33,7 +34,15 @@ export function CommentForm({ slug }: { slug: string }) {
             <FieldError messages={state?.fields?.content} />
             <FormMessage message={state?.message} success={state?.success} />
             <Button type="submit" disabled={pending}>
-                {pending ? "Posting…" : "Post comment"}
+                {pending ? (
+                    <>
+                        <RotateCw className="animate-spin" /> Posting…
+                    </>
+                ) : (
+                    <>
+                        <Pencil /> Post comment
+                    </>
+                )}
             </Button>
         </form>
     );

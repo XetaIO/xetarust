@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { FormState } from "@/lib/forms";
+import { LogIn, RotateCw, UserRoundPlus } from "lucide-react";
 
 interface AuthField {
     name: string;
@@ -133,13 +134,25 @@ export function AuthForm({ mode, action, next }: AuthFormProps) {
                 </CardContent>
                 <CardFooter className="mt-6 flex flex-col gap-4">
                     <Button type="submit" className="w-full" size="lg" disabled={pending || waitingForCaptcha}>
-                        {pending ? "Please wait…" : copy.submit}
+                        {pending ? (
+                            <>
+                                <RotateCw className="animate-spin" /> Please wait…
+                            </>
+                        ) : mode === "register" ? (
+                            <>
+                                <UserRoundPlus /> {copy.submit}
+                            </>
+                        ) : (
+                            <>
+                                <LogIn /> {copy.submit}
+                            </>
+                        )}
                     </Button>
                     <p className="text-sm text-muted-foreground">
                         {copy.switchText}{" "}
                         <Link
                             href={`${copy.switchHref}?next=${encodeURIComponent(next)}`}
-                            className="text-brand-amber hover:underline"
+                            className="text-brand-orange hover:underline"
                         >
                             {copy.switchLabel}
                         </Link>

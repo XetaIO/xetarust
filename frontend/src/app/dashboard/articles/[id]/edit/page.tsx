@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { ArticleForm } from "@/features/publishing/components/article-form";
 import { getAdminArticle, getCategories } from "@/features/publishing/queries";
+import { Eye } from "lucide-react";
 
 export const metadata: Metadata = { title: "Edit article" };
 
@@ -26,7 +27,7 @@ export default async function EditArticlePage({ params, searchParams }: PageProp
                 actions={
                     article.is_published && (
                         <Link href={`/blog/${article.slug}`} className={buttonVariants({ variant: "outline" })}>
-                            View on the blog
+                            <Eye /> View on the blog
                         </Link>
                     )
                 }

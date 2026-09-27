@@ -16,6 +16,7 @@ import type { FormState } from "@/lib/forms";
 import { cn } from "@/lib/utils";
 import type { ArticleDto } from "@/types/api/publishing/ArticleDto";
 import type { CategoryDto } from "@/types/api/publishing/CategoryDto";
+import { PenLine, RotateCw, Save } from "lucide-react";
 
 interface ArticleFormProps {
     categories: CategoryDto[];
@@ -115,7 +116,9 @@ export function ArticleForm({ categories, article, coverError }: ArticleFormProp
                                 onClick={() => setTab(value)}
                                 className={cn(
                                     "rounded-md px-3 py-1 capitalize",
-                                    tab === value ? "bg-background text-foreground" : "text-muted-foreground",
+                                    tab === value
+                                        ? "bg-background text-foreground"
+                                        : "text-muted-foreground hover:cursor-pointer",
                                 )}
                             >
                                 {value}
@@ -152,7 +155,19 @@ export function ArticleForm({ categories, article, coverError }: ArticleFormProp
 
             <div className="flex flex-col-reverse gap-3 sm:flex-row">
                 <Button type="submit" size="lg" disabled={pending} className="w-full sm:w-auto">
-                    {pending ? "Saving…" : article ? "Save changes" : "Create article"}
+                    {pending ? (
+                        <>
+                            <RotateCw className="animate-spin" /> Saving…
+                        </>
+                    ) : article ? (
+                        <>
+                            <Save /> Save changes
+                        </>
+                    ) : (
+                        <>
+                            <PenLine /> Create article
+                        </>
+                    )}
                 </Button>
                 <Link
                     href="/dashboard/articles"
@@ -212,6 +227,7 @@ function CoverField({ current, errors }: CoverFieldProps) {
                         name="cover"
                         type="file"
                         accept="image/jpeg,image/png,image/webp"
+                        className="lg:max-w-xs hover:cursor-pointer"
                         onChange={handleChange}
                         aria-invalid={!!errors}
                     />
