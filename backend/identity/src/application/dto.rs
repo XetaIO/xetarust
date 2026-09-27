@@ -28,6 +28,10 @@ pub struct RegisterRequest {
         message = "must contain between 8 and 128 characters"
     ))]
     pub password: String,
+    /// Response of the captcha widget (Cloudflare Turnstile).
+    #[serde(default)]
+    #[validate(length(min = 1, message = "is required"))]
+    pub captcha_token: String,
 }
 
 /// Body of `POST /api/auth/login`.
@@ -38,6 +42,10 @@ pub struct LoginRequest {
     pub email: String,
     #[validate(length(min = 1, message = "is required"))]
     pub password: String,
+    /// Response of the captcha widget (Cloudflare Turnstile).
+    #[serde(default)]
+    #[validate(length(min = 1, message = "is required"))]
+    pub captcha_token: String,
 }
 
 /// Returned after a successful registration or login.

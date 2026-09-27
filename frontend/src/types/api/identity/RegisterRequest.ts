@@ -3,4 +3,12 @@
 /**
  * Body of `POST /api/auth/register`.
  */
-export type RegisterRequest = { username: string; email: string; password: string };
+export type RegisterRequest = {
+  username: string;
+  email: string;
+  password: string;
+  /**
+   * Response of the captcha widget (Cloudflare Turnstile).
+   */
+  captcha_token: string;
+};

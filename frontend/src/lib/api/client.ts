@@ -19,6 +19,8 @@ export interface ApiRequestOptions {
   query?: Record<string, string | number | null | undefined>;
   /** When true, forwards the JWT stored in the httpOnly session cookie. */
   auth?: boolean;
+  /** IP of the visitor, sent as `X-Forwarded-For` (rate limit, captcha). */
+  clientIp?: string;
 }
 
 /** Builds the absolute API URL for `path` and its query parameters. */
@@ -51,6 +53,9 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
   };
   if (options.body !== undefined) {
     headers["Content-Type"] = "application/json";
+  }
+  if (options.clientIp) {
+    headers["X-Forwarded-For"] = options.clientIp;
   }
 
   const response = await fetch(buildUrl(path, options.query), {

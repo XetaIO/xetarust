@@ -5,10 +5,10 @@
 | Niveau | Où | Outils | Base de données |
 |---|---|---|---|
 | Unitaires domaine | `#[cfg(test)] mod tests` dans chaque fichier de `<contexte>/src/domain/` (et du `kernel`) | `cargo test` | non |
-| Use cases | `#[cfg(test)]` dans chaque use case | `mockall` (`Mock*Repository`, `MockPasswordHasher`, `MockTokenService`, `MockAuthorDirectory`, `MockArticleCatalog`), `FixedClock`, fixtures `application/test_support.rs` | non |
-| Adapters | unitaires (Argon2, JWT, Config, extracteurs) + `backend/<contexte>/tests/persistence.rs` | `cargo test`, `migration::testing` | Postgres de test |
+| Use cases | `#[cfg(test)]` dans chaque use case | `mockall` (`Mock*Repository`, `MockPasswordHasher`, `MockTokenService`, `MockHumanVerifier` (fixture `human(valid)`), `MockAuthorDirectory`, `MockArticleCatalog`), `FixedClock`, fixtures `application/test_support.rs` | non |
+| Adapters | unitaires (Argon2, JWT, Turnstile contre un faux serveur Axum, Config, extracteurs) + `backend/<contexte>/tests/persistence.rs` | `cargo test`, `migration::testing` | Postgres de test |
 | ACL inter-contextes | `#[cfg(test)]` dans `backend/app/src/integration/*` | fakes des contrats (`IdentityDirectory`, `PublishedArticles`) | non |
-| HTTP bout en bout | `backend/app/tests/api.rs` (vrai `Router`, les 3 contextes câblés, `tower::ServiceExt::oneshot`) | `cargo test` | Postgres de test |
+| HTTP bout en bout | `backend/app/tests/api.rs` (vrai `Router`, les 3 contextes câblés, `tower::ServiceExt::oneshot` ; captcha désactivé, chaque `call` envoie un `X-Forwarded-For` unique pour ne jamais partager un seau de rate limit, `call_from` pour une IP donnée) | `cargo test` | Postgres de test |
 | Architecture | `backend/app/tests/architecture.rs` (`cargo metadata` + scan des sources) | `cargo test` | non |
 | E2E navigateur | `frontend/e2e/*.spec.ts` | Playwright | Postgres dev (API lancée) |
 
@@ -55,5 +55,5 @@ Un nouveau contexte doit être ajouté à `CONTEXTS` dans ce fichier.
 ## E2E
 
 - Prérequis : API démarrée (`cargo run -p xetaravel-app`) ; Playwright lance `npm run dev` si besoin.
-- Promotion admin dans les tests via le binaire : `target/debug/xetaravel make-admin <email>`.
+- Promotion admin dans les tests directement en base, comme en production : `UPDATE users SET role = 'admin'` via `docker exec xetaravel_postgres psql` (e2e) ou la connexion de test (`register_admin` dans `api.rs`).
 - Les e2e vérifient aussi que le cookie de session est `httpOnly` et absent de `document.cookie`.

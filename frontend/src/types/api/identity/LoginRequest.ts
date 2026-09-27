@@ -3,4 +3,11 @@
 /**
  * Body of `POST /api/auth/login`.
  */
-export type LoginRequest = { email: string; password: string };
+export type LoginRequest = {
+  email: string;
+  password: string;
+  /**
+   * Response of the captcha widget (Cloudflare Turnstile).
+   */
+  captcha_token: string;
+};

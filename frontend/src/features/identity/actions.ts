@@ -12,6 +12,7 @@ import type { RegisterRequest } from "@/types/api/identity/RegisterRequest";
 import type { RoleDto } from "@/types/api/identity/RoleDto";
 import type { UserDto } from "@/types/api/identity/UserDto";
 
+import { clientIp } from "./client-ip";
 import { safeRedirectTarget } from "./redirect";
 import { clearSession, storeSession } from "./session";
 
@@ -19,10 +20,15 @@ import { clearSession, storeSession } from "./session";
 
 /** Logs the user in against the Rust API and stores the JWT in the session cookie. */
 export async function login(_: FormState, data: FormData): Promise<FormState> {
-  const body: LoginRequest = { email: field(data, "email"), password: field(data, "password") };
+  const body: LoginRequest = {
+    email: field(data, "email"),
+    password: field(data, "password"),
+    captcha_token: field(data, "cf-turnstile-response"),
+  };
 
   try {
-    await storeSession(await apiFetch<AuthResponse>("/api/auth/login", { method: "POST", body }));
+    const options = { method: "POST", body, clientIp: await clientIp() } as const;
+    await storeSession(await apiFetch<AuthResponse>("/api/auth/login", options));
   } catch (error) {
     return toFormState(error);
   }
@@ -36,10 +42,12 @@ export async function register(_: FormState, data: FormData): Promise<FormState>
     username: field(data, "username"),
     email: field(data, "email"),
     password: field(data, "password"),
+    captcha_token: field(data, "cf-turnstile-response"),
   };
 
   try {
-    await storeSession(await apiFetch<AuthResponse>("/api/auth/register", { method: "POST", body }));
+    const options = { method: "POST", body, clientIp: await clientIp() } as const;
+    await storeSession(await apiFetch<AuthResponse>("/api/auth/register", options));
   } catch (error) {
     return toFormState(error);
   }

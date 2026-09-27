@@ -10,7 +10,7 @@ use xetaravel_identity::IdentityModule;
 use xetaravel_kernel::{Clock, PrincipalResolver, SystemClock};
 use xetaravel_publishing::PublishingModule;
 
-use crate::config::Config;
+use crate::config::{Config, RateLimitSettings};
 use crate::integration::{IdentityAuthorDirectory, PublishingArticleCatalog};
 
 /// Shared state of the Axum application (cheap to clone). Each context's
@@ -21,6 +21,8 @@ pub struct AppState {
     pub publishing: Arc<PublishingModule>,
     pub discussion: Arc<DiscussionModule>,
     pub principals: Arc<dyn PrincipalResolver>,
+    /// Per-IP rate limit applied to the credential routes by the router.
+    pub auth_rate_limit: RateLimitSettings,
 }
 
 impl AppState {
@@ -30,7 +32,12 @@ impl AppState {
     pub fn build(db: DatabaseConnection, config: &Config) -> Self {
         let clock: Arc<dyn Clock> = Arc::new(SystemClock);
 
-        let identity = Arc::new(IdentityModule::new(db.clone(), &config.jwt, clock.clone()));
+        let identity = Arc::new(IdentityModule::new(
+            db.clone(),
+            &config.jwt,
+            &config.captcha,
+            clock.clone(),
+        ));
         let authors = Arc::new(IdentityAuthorDirectory::new(identity.directory()));
 
         let publishing = Arc::new(PublishingModule::new(
@@ -50,6 +57,7 @@ impl AppState {
             identity,
             publishing,
             discussion,
+            auth_rate_limit: config.auth_rate_limit,
         }
     }
 }

@@ -16,7 +16,7 @@ pub mod infrastructure;
 mod module;
 
 pub use application::contract::IdentityDirectory;
-pub use http::router;
+pub use http::{account_router, auth_router, router};
 pub use infrastructure::migrations::migrations;
-pub use infrastructure::security::JwtSettings;
+pub use infrastructure::security::{CaptchaSettings, JwtSettings};
 pub use module::IdentityModule;

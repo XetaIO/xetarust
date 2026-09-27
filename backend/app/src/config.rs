@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use chrono::Duration;
 use thiserror::Error;
-use xetaravel_identity::JwtSettings;
+use xetaravel_identity::{CaptchaSettings, JwtSettings};
 
 /// Minimum length of the JWT secret, in bytes.
 const MIN_JWT_SECRET_LENGTH: usize = 32;
@@ -19,11 +19,33 @@ pub enum ConfigError {
     Invalid(&'static str, String),
 }
 
+/// Per-IP rate limit of the credential routes (login, register).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RateLimitSettings {
+    /// Requests a single IP may send in a row.
+    pub burst: u32,
+    /// Seconds after which one more request is allowed.
+    pub period_seconds: u64,
+}
+
+impl Default for RateLimitSettings {
+    /// 5 attempts in a row, then one every 12 seconds (5 per minute).
+    fn default() -> Self {
+        Self {
+            burst: 5,
+            period_seconds: 12,
+        }
+    }
+}
+
 /// Runtime configuration read from the environment (see `.env.example`).
 #[derive(Debug, Clone)]
 pub struct Config {
     pub database_url: String,
     pub jwt: JwtSettings,
+    /// Captcha of the credential routes; disabled without `TURNSTILE_SECRET`.
+    pub captcha: CaptchaSettings,
+    pub auth_rate_limit: RateLimitSettings,
     pub app_addr: String,
     pub cors_origin: String,
     /// Root directory of the uploaded files (cover images...).
@@ -48,23 +70,22 @@ impl Config {
             ));
         }
 
-        let ttl_seconds = lookup("JWT_TTL_SECONDS")
-            .map(|raw| {
-                raw.parse::<i64>()
-                    .ok()
-                    .filter(|seconds| *seconds > 0)
-                    .ok_or_else(|| {
-                        ConfigError::Invalid("JWT_TTL_SECONDS", "must be a positive integer".into())
-                    })
-            })
-            .transpose()?
-            .unwrap_or(7 * 24 * 3600);
+        let ttl_seconds = positive(&lookup, "JWT_TTL_SECONDS")?.unwrap_or(7 * 24 * 3600);
+        let defaults = RateLimitSettings::default();
 
         Ok(Self {
             database_url: required("DATABASE_URL")?,
             jwt: JwtSettings {
                 secret: jwt_secret,
                 ttl: Duration::seconds(ttl_seconds),
+            },
+            captcha: CaptchaSettings {
+                turnstile_secret: lookup("TURNSTILE_SECRET").filter(|secret| !secret.is_empty()),
+            },
+            auth_rate_limit: RateLimitSettings {
+                burst: positive(&lookup, "AUTH_RATE_LIMIT_BURST")?.unwrap_or(defaults.burst),
+                period_seconds: positive(&lookup, "AUTH_RATE_LIMIT_PERIOD_SECONDS")?
+                    .unwrap_or(defaults.period_seconds),
             },
             app_addr: lookup("APP_ADDR").unwrap_or_else(|| "127.0.0.1:8080".into()),
             cors_origin: lookup("CORS_ORIGIN").unwrap_or_else(|| "http://localhost:3000".into()),
@@ -73,6 +94,24 @@ impl Config {
                 .into(),
         })
     }
+}
+
+/// Reads the optional variable `key` as a strictly positive integer.
+fn positive<T>(
+    lookup: &impl Fn(&str) -> Option<String>,
+    key: &'static str,
+) -> Result<Option<T>, ConfigError>
+where
+    T: std::str::FromStr + PartialOrd + Default,
+{
+    lookup(key)
+        .map(|raw| {
+            raw.parse::<T>()
+                .ok()
+                .filter(|value| *value > T::default())
+                .ok_or_else(|| ConfigError::Invalid(key, "must be a positive integer".into()))
+        })
+        .transpose()
 }
 
 #[cfg(test)]
@@ -104,6 +143,48 @@ mod tests {
         assert_eq!(config.jwt.ttl, Duration::days(7));
         assert_eq!(config.app_addr, "127.0.0.1:8080");
         assert_eq!(config.uploads_dir, PathBuf::from("storage/uploads"));
+        assert_eq!(config.captcha.turnstile_secret, None);
+        assert_eq!(
+            config.auth_rate_limit,
+            RateLimitSettings {
+                burst: 5,
+                period_seconds: 12
+            }
+        );
+    }
+
+    #[test]
+    fn reads_the_captcha_secret_and_the_rate_limit() {
+        let config = Config::from_lookup(lookup(&[
+            ("DATABASE_URL", "postgres://db"),
+            ("JWT_SECRET", SECRET),
+            ("TURNSTILE_SECRET", "turnstile"),
+            ("AUTH_RATE_LIMIT_BURST", "10"),
+            ("AUTH_RATE_LIMIT_PERIOD_SECONDS", "30"),
+        ]))
+        .unwrap();
+        assert_eq!(
+            config.captcha.turnstile_secret.as_deref(),
+            Some("turnstile")
+        );
+        assert_eq!(
+            config.auth_rate_limit,
+            RateLimitSettings {
+                burst: 10,
+                period_seconds: 30
+            }
+        );
+    }
+
+    #[test]
+    fn treats_an_empty_captcha_secret_as_disabled() {
+        let config = Config::from_lookup(lookup(&[
+            ("DATABASE_URL", "postgres://db"),
+            ("JWT_SECRET", SECRET),
+            ("TURNSTILE_SECRET", ""),
+        ]))
+        .unwrap();
+        assert_eq!(config.captcha.turnstile_secret, None);
     }
 
     #[test]
@@ -135,5 +216,19 @@ mod tests {
             ])),
             Err(ConfigError::Invalid("JWT_TTL_SECONDS", _))
         ));
+        for key in ["AUTH_RATE_LIMIT_BURST", "AUTH_RATE_LIMIT_PERIOD_SECONDS"] {
+            for value in ["0", "-3", "abc"] {
+                assert_eq!(
+                    Config::from_lookup(lookup(&[
+                        ("DATABASE_URL", "x"),
+                        ("JWT_SECRET", SECRET),
+                        (key, value)
+                    ]))
+                    .unwrap_err(),
+                    ConfigError::Invalid(key, "must be a positive integer".into()),
+                    "{key}={value}"
+                );
+            }
+        }
     }
 }

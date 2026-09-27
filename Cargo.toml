@@ -22,6 +22,8 @@ axum = { version = "0.8", features = ["macros"] }
 tower = { version = "0.5", features = ["util"] }
 tower-http = { version = "0.7", features = ["cors", "trace", "compression-gzip"] }
 http-body-util = "0.1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tower_governor = { version = "0.8", default-features = false, features = ["axum"] }
 async-trait = "0.1"
 
 # Persistence

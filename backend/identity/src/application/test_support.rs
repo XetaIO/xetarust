@@ -5,6 +5,7 @@ use std::sync::Arc;
 use chrono::{DateTime, TimeZone, Utc};
 use xetaravel_kernel::{FixedClock, Principal};
 
+use crate::application::ports::MockHumanVerifier;
 pub(crate) use crate::application::use_cases::principal_of;
 use crate::domain::{Email, PasswordHash, Role, User, Username};
 
@@ -38,4 +39,11 @@ pub fn admin_principal() -> Principal {
 /// Builds a member principal.
 pub fn member_principal() -> Principal {
     principal_of(&user("member", Role::Member))
+}
+
+/// Returns a captcha verifier mock answering `valid` to every challenge.
+pub fn human(valid: bool) -> Arc<MockHumanVerifier> {
+    let mut verifier = MockHumanVerifier::new();
+    verifier.expect_verify().returning(move |_, _| Ok(valid));
+    Arc::new(verifier)
 }

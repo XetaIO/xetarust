@@ -21,9 +21,29 @@ where
     Arc<IdentityModule>: FromRef<S>,
     Arc<dyn PrincipalResolver>: FromRef<S>,
 {
+    auth_router().merge(account_router())
+}
+
+/// Credential routes (register, login): the targets of brute force and bot
+/// sign-ups, exposed separately so the composition root can rate limit them.
+pub fn auth_router<S>() -> Router<S>
+where
+    S: Clone + Send + Sync + 'static,
+    Arc<IdentityModule>: FromRef<S>,
+{
     Router::new()
         .route("/api/auth/register", post(auth::register))
         .route("/api/auth/login", post(auth::login))
+}
+
+/// Every other route: current account and user administration.
+pub fn account_router<S>() -> Router<S>
+where
+    S: Clone + Send + Sync + 'static,
+    Arc<IdentityModule>: FromRef<S>,
+    Arc<dyn PrincipalResolver>: FromRef<S>,
+{
+    Router::new()
         .route("/api/auth/me", get(auth::me))
         .route("/api/admin/users", get(admin::list_users))
         .route("/api/admin/users/{id}/role", patch(admin::change_user_role))

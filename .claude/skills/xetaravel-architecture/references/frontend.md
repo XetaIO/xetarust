@@ -15,8 +15,8 @@ frontend/src/
 │   └── dashboard/              admin (layout = requireAdmin())
 ├── features/
 │   ├── identity/               session.ts (storeSession, clearSession, getCurrentUser, requireUser, requireAdmin),
-│   │                           redirect.ts, actions.ts (login, register, logout, changeUserRole), queries.ts (getUsers),
-│   │                           components/{auth-form, role-toggle}
+│   │                           redirect.ts, client-ip.ts (clientIp, relayé en X-Forwarded-For), actions.ts (login, register, logout, changeUserRole),
+│   │                           queries.ts (getUsers), components/{auth-form (widget Turnstile), role-toggle}
 │   ├── publishing/             queries.ts (articles, catégories, admin), actions.ts (saveArticle, deleteArticle, saveCategory, deleteCategory),
 │   │                           cover.ts (coverUrl), components/{article-card, article-cover, article-list, category-nav, markdown, article-form, category-form}
 │   └── discussion/             queries.ts (getComments), actions.ts (postComment, deleteComment),

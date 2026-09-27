@@ -65,13 +65,6 @@ impl User {
         self.updated_at = now;
         Ok(())
     }
-
-    /// Promotes the user to admin without any actor check.
-    /// Reserved for trusted system operations (CLI bootstrap).
-    pub fn promote_to_admin(&mut self, now: DateTime<Utc>) {
-        self.role = Role::Admin;
-        self.updated_at = now;
-    }
 }
 
 #[cfg(test)]
@@ -124,7 +117,7 @@ mod tests {
     #[test]
     fn admin_cannot_demote_themselves() {
         let mut admin = member(Utc::now());
-        admin.promote_to_admin(Utc::now());
+        admin.role = Role::Admin;
         let id = admin.id;
 
         let result = admin.change_role(Role::Member, id, Role::Admin, Utc::now());

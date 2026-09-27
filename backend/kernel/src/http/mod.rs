@@ -4,4 +4,6 @@ mod error;
 mod extractors;
 
 pub use error::{ApiError, ApiResult, ErrorBody, ErrorCode};
-pub use extractors::{AdminPrincipal, CurrentPrincipal, JsonBody, PathParam, QueryParams};
+pub use extractors::{
+    AdminPrincipal, ClientIp, CurrentPrincipal, JsonBody, PathParam, QueryParams,
+};

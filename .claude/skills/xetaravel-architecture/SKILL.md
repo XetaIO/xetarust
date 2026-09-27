@@ -14,22 +14,22 @@ Site personnel d'Emeric Fevre (Xety) :
 - **Utilisateurs** — inscription / connexion. Deux rôles : `member` (par défaut) et `admin`.
 - **`/dashboard`** (admin uniquement) — CRUD articles et catégories, changement de rôle des utilisateurs.
 
-| Couche | Stack |
-|---|---|
+| Couche                  | Stack                                                                                                                                                    |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Backend (API JSON only) | Rust 2024, Tokio, Axum 0.8, SeaORM 2 + migrations, PostgreSQL uniquement, `validator`, `serde`, `uuid` v7, Argon2id, JWT HS256 (`jsonwebtoken`), `ts-rs` |
-| Frontend | Next.js 16 (App Router, Turbopack), React 19, TypeScript strict, Tailwind CSS v4, shadcn/ui (Base UI), Motion, react-markdown + Shiki |
-| Tests | `cargo test` (unitaires + mockall + intégration Postgres + HTTP + architecture), Playwright (e2e) |
+| Frontend                | Next.js 16 (App Router, Turbopack), React 19, TypeScript strict, Tailwind CSS v4, shadcn/ui (Base UI), Motion, react-markdown + Shiki                    |
+| Tests                   | `cargo test` (unitaires + mockall + intégration Postgres + HTTP + architecture), Playwright (e2e)                                                        |
 
 ## 2. Architecture domain-first (backend)
 
 Le backend est découpé en **trois bounded contexts**, un crate chacun ; l'hexagone
 (domain → application → infrastructure / http) vit **à l'intérieur** de chaque contexte.
 
-| Contexte | Crate | Responsabilité | Concepts possédés |
-|---|---|---|---|
-| Identity | `backend/identity` (`xetaravel-identity`) | Identité, authentification, autorisation | `User`, `UserId`, `Email`, `Username`, `PasswordHash`, `Role` |
-| Publishing | `backend/publishing` (`xetaravel-publishing`) | Création et publication du contenu | `Article`, `ArticleDraft`, `Category`, `ArticleId`, `CategoryId`, `AuthorId`, `Slug` |
-| Discussion | `backend/discussion` (`xetaravel-discussion`) | Interactions autour du contenu | `Comment`, `CommentId`, `ArticleId` et `AuthorId` **locaux** |
+| Contexte   | Crate                                         | Responsabilité                           | Concepts possédés                                                                    |
+| ---------- | --------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------ |
+| Identity   | `backend/identity` (`xetaravel-identity`)     | Identité, authentification, autorisation | `User`, `UserId`, `Email`, `Username`, `PasswordHash`, `Role`                        |
+| Publishing | `backend/publishing` (`xetaravel-publishing`) | Création et publication du contenu       | `Article`, `ArticleDraft`, `Category`, `ArticleId`, `CategoryId`, `AuthorId`, `Slug` |
+| Discussion | `backend/discussion` (`xetaravel-discussion`) | Interactions autour du contenu           | `Comment`, `CommentId`, `ArticleId` et `AuthorId` **locaux**                         |
 
 ```
 backend/
@@ -38,7 +38,7 @@ backend/
 ├── publishing/  xetaravel-publishing
 ├── discussion/  xetaravel-discussion
 ├── migration/   migration             agrège les migrations des contextes (identity → publishing → discussion)
-└── app/         xetaravel-app         composition root + ACL + router + CLI (binaire `xetaravel`)
+└── app/         xetaravel-app         composition root + ACL + router (binaire `xetaravel`)
 ```
 
 Structure identique dans chaque contexte :
@@ -54,6 +54,7 @@ Structure identique dans chaque contexte :
 ```
 
 **Règles de dépendance (vérifiées par `backend/app/tests/architecture.rs`)** :
+
 - `identity`, `publishing`, `discussion` dépendent **seulement** de `kernel` — jamais les uns des autres, ni de `app`/`migration` (hors dev-dependencies).
 - `kernel` ne dépend d'aucun contexte.
 - Dans un contexte : `domain/**` n'importe ni `sea_orm`, `axum`, `serde`, `ts_rs`, ni `crate::application|infrastructure|http` ; `application/**` n'importe ni `sea_orm` ni `axum`.
@@ -63,11 +64,11 @@ Structure identique dans chaque contexte :
 
 Un contexte **déclare ce dont il a besoin** (port sortant dans `application/ports.rs`) et **expose un petit contrat** (`application/contract.rs`). `app/src/integration/` branche l'un sur l'autre en traduisant les identifiants :
 
-| Port (consommateur) | Contrat (fournisseur) | Adapter ACL (`app`) |
-|---|---|---|
-| `publishing::AuthorDirectory`, `discussion::AuthorDirectory` (noms d'auteurs) | `identity::IdentityDirectory` (use case `GetPublicProfiles`) | `IdentityAuthorDirectory` |
-| `discussion::ArticleCatalog` (article publié ?) | `publishing::PublishedArticles` (use case `FindPublishedArticle`) | `PublishingArticleCatalog` |
-| `kernel::PrincipalResolver` (token → `Principal`) | use case `identity::Authenticate` | `IdentityModule::principals()` |
+| Port (consommateur)                                                           | Contrat (fournisseur)                                             | Adapter ACL (`app`)            |
+| ----------------------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------ |
+| `publishing::AuthorDirectory`, `discussion::AuthorDirectory` (noms d'auteurs) | `identity::IdentityDirectory` (use case `GetPublicProfiles`)      | `IdentityAuthorDirectory`      |
+| `discussion::ArticleCatalog` (article publié ?)                               | `publishing::PublishedArticles` (use case `FindPublishedArticle`) | `PublishingArticleCatalog`     |
+| `kernel::PrincipalResolver` (token → `Principal`)                             | use case `identity::Authenticate`                                 | `IdentityModule::principals()` |
 
 - Les autres contextes ne voient **jamais** `User` : ils manipulent un `Principal { user_id, is_admin }` (kernel) et leurs propres ids (`AuthorId`, `ArticleId`).
 - Les vues composites (article + catégorie + nom d'auteur) sont construites **dans l'application** (`publishing/src/application/views.rs`) : le repository joint uniquement ce que le contexte possède (catégories) ; les auteurs viennent du port, en **un seul appel par lot** (pas de N+1). Auteur inconnu → nom `"unknown"`.
@@ -81,18 +82,18 @@ Un contexte **déclare ce dont il a besoin** (port sortant dans `application/por
 
 ### « Je veux ajouter… → où ? »
 
-| Besoin | Emplacement |
-|---|---|
-| Une règle métier / un invariant | méthode d'entité ou value object dans `backend/<contexte>/src/domain/` |
-| Une nouvelle requête de persistance | méthode du trait dans `domain/*_repository.rs` **puis** implémentation dans `infrastructure/persistence/*_repository.rs` |
-| Un cas d'utilisation | `backend/<contexte>/src/application/use_cases/<verbe_nom>.rs` + champ dans `module.rs` |
-| Un format d'entrée/sortie de l'API | `application/dto.rs` du contexte (`#[ts(export, export_to = "<contexte>/")]`) ; DTO partagé → `kernel/src/dto.rs` (`shared/`) |
-| Une dépendance technique (mail, stockage…) | trait dans `application/ports.rs` du contexte + adapter dans son `infrastructure/`, câblé dans `module.rs` |
-| Un besoin envers un autre contexte | port dans `application/ports.rs` du consommateur + contrat dans `application/contract.rs` du fournisseur + adapter dans `app/src/integration/` |
-| Un endpoint | handler dans `<contexte>/src/http/` + route dans son `router()` |
-| Une colonne / table | nouvelle migration dans `<contexte>/src/infrastructure/migrations/` (ajoutée **à la fin** de `migrations()`) + entité SeaORM + mappers |
-| Un nouveau contexte | nouveau crate sur le même modèle + membre du workspace + `migration` + `app` (state, router, ACL) + `CONTEXTS` de `architecture.rs` |
-| Une page | `frontend/src/app/**/page.tsx` qui compose les `features/*` (voir `references/frontend.md`) |
+| Besoin                                     | Emplacement                                                                                                                                    |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Une règle métier / un invariant            | méthode d'entité ou value object dans `backend/<contexte>/src/domain/`                                                                         |
+| Une nouvelle requête de persistance        | méthode du trait dans `domain/*_repository.rs` **puis** implémentation dans `infrastructure/persistence/*_repository.rs`                       |
+| Un cas d'utilisation                       | `backend/<contexte>/src/application/use_cases/<verbe_nom>.rs` + champ dans `module.rs`                                                         |
+| Un format d'entrée/sortie de l'API         | `application/dto.rs` du contexte (`#[ts(export, export_to = "<contexte>/")]`) ; DTO partagé → `kernel/src/dto.rs` (`shared/`)                  |
+| Une dépendance technique (mail, stockage…) | trait dans `application/ports.rs` du contexte + adapter dans son `infrastructure/`, câblé dans `module.rs`                                     |
+| Un besoin envers un autre contexte         | port dans `application/ports.rs` du consommateur + contrat dans `application/contract.rs` du fournisseur + adapter dans `app/src/integration/` |
+| Un endpoint                                | handler dans `<contexte>/src/http/` + route dans son `router()`                                                                                |
+| Une colonne / table                        | nouvelle migration dans `<contexte>/src/infrastructure/migrations/` (ajoutée **à la fin** de `migrations()`) + entité SeaORM + mappers         |
+| Un nouveau contexte                        | nouveau crate sur le même modèle + membre du workspace + `migration` + `app` (state, router, ACL) + `CONTEXTS` de `architecture.rs`            |
+| Une page                                   | `frontend/src/app/**/page.tsx` qui compose les `features/*` (voir `references/frontend.md`)                                                    |
 
 Détails : [`references/backend.md`](references/backend.md).
 
@@ -148,11 +149,10 @@ Les messages de commit, identifiants et logs sont aussi en anglais.
 
 - Préfixe `/api`, JSON uniquement, identifiants UUID v7, dates ISO 8601 UTC.
 - Erreurs : `{ "error": ErrorCode, "message": string, "fields"?: { champ: [messages] } }` avec
-  `validation_error` 422 · `unauthorized` 401 · `forbidden` 403 · `not_found` 404 · `conflict` 409 · `internal_error` 500.
+  `validation_error` 422 · `unauthorized` 401 · `forbidden` 403 · `not_found` 404 · `conflict` 409 · `too_many_requests` 429 · `internal_error` 500.
 - Les brouillons et slugs invalides sont renvoyés en **404** côté public (on ne révèle rien).
 - Auth : `POST /api/auth/login|register` → `{ token, expires_at, user }`. Le JWT s'envoie en `Authorization: Bearer`.
 - **Côté Next.js, le JWT vit uniquement dans le cookie httpOnly `xetaravel_token`** (`secure` en prod, `sameSite=lax`), posé par les Server Actions (`features/identity/actions.ts`). Le navigateur ne voit jamais le token ; tous les appels à l'API passent par le serveur Next (`src/lib/api/client.ts`, `server-only`).
-- Premier admin : `cargo run -p xetaravel-app -- make-admin <email>` (jamais exposé en HTTP).
 
 Liste des routes et formats : [`references/conventions.md`](references/conventions.md).
 
@@ -167,7 +167,6 @@ docker compose up -d                          # PostgreSQL dev (5442) + test (54
 cp .env.example .env                          # puis changer JWT_SECRET
 cargo run -p migration -- up                  # migrations (aussi appliquées au démarrage de l'app)
 cargo run -p xetaravel-app                    # API sur 127.0.0.1:8080 (binaire `xetaravel`)
-cargo run -p xetaravel-app -- make-admin me@example.com
 
 cargo test --workspace                        # tous les tests (dont architecture) + régénération des types TS
 cargo clippy --workspace --all-targets -- -D warnings

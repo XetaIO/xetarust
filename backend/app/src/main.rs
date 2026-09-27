@@ -1,10 +1,10 @@
 //! Binary of Xetaravel.
 //!
 //! ```text
-//! xetaravel                     # start the HTTP server
-//! xetaravel make-admin <email>  # promote an existing account to admin
+//! xetaravel  # start the HTTP server
 //! ```
 
+use std::net::SocketAddr;
 use std::process::ExitCode;
 
 use axum::http::{HeaderValue, Method, header};
@@ -37,8 +37,7 @@ async fn main() -> ExitCode {
         .as_slice()
     {
         [] | ["serve"] => serve().await,
-        ["make-admin", email] => make_admin(email).await,
-        _ => Err("usage: xetaravel [serve | make-admin <email>]".into()),
+        _ => Err("usage: xetaravel [serve]".into()),
     };
 
     match result {
@@ -66,6 +65,9 @@ async fn bootstrap() -> Result<(Config, AppState), Box<dyn std::error::Error>> {
 /// Starts the HTTP server until Ctrl+C.
 async fn serve() -> CliResult {
     let (config, state) = bootstrap().await?;
+    if config.captcha.turnstile_secret.is_none() {
+        tracing::warn!("TURNSTILE_SECRET is not set: the captcha of login/register is disabled");
+    }
 
     let cors = CorsLayer::new()
         .allow_origin(config.cors_origin.parse::<HeaderValue>()?)
@@ -82,23 +84,14 @@ async fn serve() -> CliResult {
 
     let listener = TcpListener::bind(&config.app_addr).await?;
     tracing::info!("listening on http://{}", config.app_addr);
-    axum::serve(listener, app)
-        .with_graceful_shutdown(async {
-            tokio::signal::ctrl_c().await.ok();
-        })
-        .await?;
-    Ok(())
-}
-
-/// Promotes the account using `email` to admin (trusted CLI operation).
-async fn make_admin(email: &str) -> CliResult {
-    let (_, state) = bootstrap().await?;
-    let user = state
-        .identity
-        .promote_to_admin
-        .execute(email)
-        .await
-        .map_err(|e| e.to_string())?;
-    tracing::info!("{} ({}) is now an admin", user.username, user.email);
+    // The peer address is the rate limit fallback when `X-Forwarded-For` is absent.
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(async {
+        tokio::signal::ctrl_c().await.ok();
+    })
+    .await?;
     Ok(())
 }

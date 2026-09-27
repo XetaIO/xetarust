@@ -13,6 +13,7 @@ async-trait.workspace = true
 axum.workspace = true
 chrono.workspace = true
 jsonwebtoken.workspace = true
+reqwest.workspace = true
 sea-orm.workspace = true
 sea-orm-migration.workspace = true
 serde.workspace = true
@@ -25,4 +26,5 @@ validator.workspace = true
 # Test-only: the schema aggregator provides a migrated test database.
 migration = { workspace = true, features = ["test-support"] }
 mockall.workspace = true
+serde_json.workspace = true
 tokio.workspace = true

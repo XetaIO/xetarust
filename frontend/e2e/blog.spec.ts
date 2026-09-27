@@ -1,10 +1,26 @@
 import { execFileSync } from "node:child_process";
-import path from "node:path";
 
 import { expect, type Page, test } from "@playwright/test";
 
-/** Binary of the Rust API, used to promote the test admin. */
-const API_BINARY = path.resolve(__dirname, "../../target/debug/xetaravel");
+/** Docker container of the dev database (see `docker-compose.yml`). */
+const DB_CONTAINER = "xetaravel_postgres";
+
+/** Promotes the account using `email` to admin directly in the dev database. */
+function promoteToAdmin(email: string): void {
+  execFileSync("docker", [
+    "exec",
+    DB_CONTAINER,
+    "psql",
+    "-U",
+    "xetaravel",
+    "-d",
+    "xetaravel",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-c",
+    `UPDATE users SET role = 'admin' WHERE email = '${email}'`,
+  ]);
+}
 
 /** Returns a short unique suffix for test data. */
 function unique(): string {
@@ -41,7 +57,7 @@ test("admin publishes an article and a member comments it", async ({ browser }) 
   const adminContext = await browser.newContext();
   const admin = await adminContext.newPage();
   const adminEmail = await register(admin, `admin_${id}`);
-  execFileSync(API_BINARY, ["make-admin", adminEmail], { cwd: path.resolve(__dirname, "../..") });
+  promoteToAdmin(adminEmail);
 
   const [session] = await adminContext.cookies();
   expect(session.name).toBe("xetaravel_token");

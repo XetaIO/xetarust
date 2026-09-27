@@ -1,7 +1,8 @@
 "use client";
 
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import { FieldError, FormMessage } from "@/components/forms/field-error";
 import { Button } from "@/components/ui/button";
@@ -55,10 +56,40 @@ const COPY = {
     },
 };
 
-/** Login or registration form bound to its Server Action. */
+/** Public Turnstile site key, inlined at build time; absent = captcha disabled. */
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
+/** Name of the field holding the captcha token (the one Turnstile injects). */
+const CAPTCHA_FIELD = "cf-turnstile-response";
+
+/**
+ * Token sent when the captcha is disabled (dev, e2e): the API then runs
+ * without a Turnstile secret and accepts any token, but still requires one.
+ */
+const CAPTCHA_DISABLED_TOKEN = "captcha-disabled";
+
+/** Login or registration form bound to its Server Action, protected by Turnstile. */
 export function AuthForm({ mode, action, next }: AuthFormProps) {
     const [state, formAction, pending] = useActionState(action, null);
+    const [token, setToken] = useState<string | null>(null);
+    const [answeredState, setAnsweredState] = useState(state);
+    const captcha = useRef<TurnstileInstance>(undefined);
     const copy = COPY[mode];
+
+    // A Turnstile token can only be used once: forget it after every answer…
+    if (state !== answeredState) {
+        setAnsweredState(state);
+        setToken(null);
+    }
+
+    // …and ask the widget for a fresh one.
+    useEffect(() => {
+        if (state) {
+            captcha.current?.reset();
+        }
+    }, [state]);
+
+    const waitingForCaptcha = Boolean(TURNSTILE_SITE_KEY) && !token;
 
     return (
         <Card className="glass w-full max-w-md">
@@ -84,9 +115,24 @@ export function AuthForm({ mode, action, next }: AuthFormProps) {
                             <FieldError messages={state?.fields?.[field.name]} />
                         </div>
                     ))}
+                    <div className="space-y-2">
+                        {TURNSTILE_SITE_KEY ? (
+                            <Turnstile
+                                ref={captcha}
+                                siteKey={TURNSTILE_SITE_KEY}
+                                options={{ theme: "dark", size: "flexible" }}
+                                onSuccess={setToken}
+                                onExpire={() => setToken(null)}
+                                onError={() => setToken(null)}
+                            />
+                        ) : (
+                            <input type="hidden" name={CAPTCHA_FIELD} value={CAPTCHA_DISABLED_TOKEN} />
+                        )}
+                        <FieldError messages={state?.fields?.captcha_token} />
+                    </div>
                 </CardContent>
                 <CardFooter className="mt-6 flex flex-col gap-4">
-                    <Button type="submit" className="w-full" size="lg" disabled={pending}>
+                    <Button type="submit" className="w-full" size="lg" disabled={pending || waitingForCaptcha}>
                         {pending ? "Please wait…" : copy.submit}
                     </Button>
                     <p className="text-sm text-muted-foreground">

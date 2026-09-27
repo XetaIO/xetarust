@@ -10,6 +10,6 @@ pub mod integration;
 pub mod router;
 pub mod state;
 
-pub use config::{Config, ConfigError};
+pub use config::{Config, ConfigError, RateLimitSettings};
 pub use router::router;
 pub use state::AppState;

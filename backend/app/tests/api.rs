@@ -5,33 +5,47 @@
 //! Requires the `postgres_test` service (`docker compose up -d`) and
 //! `DATABASE_URL_TEST` (read from `.env`).
 
+use std::net::{IpAddr, Ipv6Addr};
+
 use axum::Router;
 use axum::body::Body;
 use axum::body::Bytes;
 use axum::http::{HeaderMap, Method, Request, StatusCode, header};
 use http_body_util::BodyExt;
 use migration::testing::test_database;
+use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Statement};
 use serde_json::{Value, json};
 use tempfile::TempDir;
 use tower::ServiceExt;
 use uuid::Uuid;
-use xetaravel_app::{AppState, Config, router};
-use xetaravel_identity::JwtSettings;
+use xetaravel_app::{AppState, Config, RateLimitSettings, router};
+use xetaravel_identity::{CaptchaSettings, JwtSettings};
 
 /// Header of a PNG file: enough for the format detection.
 const PNG: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3];
 
-/// Test harness holding the router and the application state.
+/// Test harness holding the router and the test database.
 struct TestApp {
     router: Router,
-    state: AppState,
+    /// Test database, used to promote admins the way it is done in production.
+    db: DatabaseConnection,
     /// Temporary uploads directory, removed when the harness is dropped.
     uploads: TempDir,
 }
 
 impl TestApp {
-    /// Connects to the (migrated) test database and builds the production router.
+    /// Connects to the (migrated) test database and builds the production
+    /// router, with the captcha disabled and a rate limit out of reach.
     async fn start() -> Self {
+        Self::start_with(RateLimitSettings {
+            burst: 10_000,
+            period_seconds: 1,
+        })
+        .await
+    }
+
+    /// Same as [`Self::start`] with the given rate limit on the credential routes.
+    async fn start_with(auth_rate_limit: RateLimitSettings) -> Self {
         let db = test_database().await;
         let uploads = tempfile::tempdir().unwrap();
         let config = Config {
@@ -40,15 +54,17 @@ impl TestApp {
                 secret: "test-secret-test-secret-test-secret!".into(),
                 ttl: chrono::Duration::hours(1),
             },
+            captcha: CaptchaSettings::default(),
+            auth_rate_limit,
             app_addr: "127.0.0.1:0".into(),
             cors_origin: "http://localhost:3000".into(),
             uploads_dir: uploads.path().to_path_buf(),
         };
-        let state = AppState::build(db, &config);
+        let state = AppState::build(db.clone(), &config);
 
         Self {
-            router: router(state.clone()),
-            state,
+            router: router(state),
+            db,
             uploads,
         }
     }
@@ -83,6 +99,9 @@ impl TestApp {
     }
 
     /// Sends a request and returns the status with the parsed JSON body (Null when empty).
+    ///
+    /// Every call comes from a unique client IP: the tests run in parallel and
+    /// must never share a rate limit bucket.
     async fn call(
         &self,
         method: Method,
@@ -90,7 +109,22 @@ impl TestApp {
         token: Option<&str>,
         body: Option<Value>,
     ) -> (StatusCode, Value) {
-        let mut request = Request::builder().method(method).uri(uri);
+        self.call_from(unique_ip(), method, uri, token, body).await
+    }
+
+    /// Same as [`Self::call`], sent by the client `ip` (`X-Forwarded-For`).
+    async fn call_from(
+        &self,
+        ip: IpAddr,
+        method: Method,
+        uri: &str,
+        token: Option<&str>,
+        body: Option<Value>,
+    ) -> (StatusCode, Value) {
+        let mut request = Request::builder()
+            .method(method)
+            .uri(uri)
+            .header("x-forwarded-for", ip.to_string());
         if let Some(token) = token {
             request = request.header(header::AUTHORIZATION, format!("Bearer {token}"));
         }
@@ -122,20 +156,23 @@ impl TestApp {
                 Method::POST,
                 "/api/auth/register",
                 None,
-                Some(json!({ "username": format!("user_{suffix}"), "email": email, "password": "super-secret" })),
+                Some(json!({ "username": format!("user_{suffix}"), "email": email, "password": "super-secret", "captcha_token": "test" })),
             )
             .await;
         assert_eq!(status, StatusCode::CREATED, "{body}");
         (body["token"].as_str().unwrap().to_owned(), email)
     }
 
-    /// Registers a new account and promotes it to admin; returns its token.
+    /// Registers a new account and promotes it to admin directly in the
+    /// database (there is no promotion command); returns its token.
     async fn register_admin(&self) -> String {
         let (token, email) = self.register().await;
-        self.state
-            .identity
-            .promote_to_admin
-            .execute(&email)
+        self.db
+            .execute_raw(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                "UPDATE users SET role = 'admin' WHERE email = $1",
+                [email.into()],
+            ))
             .await
             .unwrap();
         token
@@ -173,6 +210,11 @@ impl TestApp {
     }
 }
 
+/// Returns an IP address no other request of the test suite uses.
+fn unique_ip() -> IpAddr {
+    IpAddr::V6(Ipv6Addr::from(Uuid::now_v7().as_u128()))
+}
+
 #[tokio::test]
 async fn health_check() {
     let app = TestApp::start().await;
@@ -199,7 +241,7 @@ async fn register_login_and_me() {
             Method::POST,
             "/api/auth/login",
             None,
-            Some(json!({ "email": email.to_uppercase(), "password": "super-secret" })),
+            Some(json!({ "email": email.to_uppercase(), "password": "super-secret", "captcha_token": "test" })),
         )
         .await;
     assert_eq!(status, StatusCode::OK);
@@ -210,7 +252,7 @@ async fn register_login_and_me() {
             Method::POST,
             "/api/auth/login",
             None,
-            Some(json!({ "email": email, "password": "wrong-password" })),
+            Some(json!({ "email": email, "password": "wrong-password", "captcha_token": "test" })),
         )
         .await;
     assert_eq!(status, StatusCode::UNAUTHORIZED);
@@ -227,7 +269,7 @@ async fn registration_errors_are_reported_per_field() {
             Method::POST,
             "/api/auth/register",
             None,
-            Some(json!({ "username": "x", "email": email, "password": "short" })),
+            Some(json!({ "username": "x", "email": email, "password": "short", "captcha_token": "test" })),
         )
         .await;
 
@@ -235,6 +277,68 @@ async fn registration_errors_are_reported_per_field() {
     assert_eq!(body["error"], "validation_error");
     assert!(body["fields"]["username"].is_array());
     assert!(body["fields"]["password"].is_array());
+}
+
+#[tokio::test]
+async fn auth_routes_are_rate_limited_per_ip() {
+    let app = TestApp::start_with(RateLimitSettings {
+        burst: 2,
+        period_seconds: 60,
+    })
+    .await;
+    let attacker = unique_ip();
+    let attempt = json!({ "email": "ghost@example.com", "password": "wrong-password", "captcha_token": "test" });
+
+    for _ in 0..2 {
+        let (status, _) = app
+            .call_from(
+                attacker,
+                Method::POST,
+                "/api/auth/login",
+                None,
+                Some(attempt.clone()),
+            )
+            .await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+    }
+    let (status, body) = app
+        .call_from(
+            attacker,
+            Method::POST,
+            "/api/auth/login",
+            None,
+            Some(attempt.clone()),
+        )
+        .await;
+    assert_eq!(status, StatusCode::TOO_MANY_REQUESTS);
+    assert_eq!(body["error"], "too_many_requests");
+    assert_eq!(body["message"], "too many attempts, try again later");
+
+    // The same IP is also blocked on registration (shared bucket).
+    let (status, _) = app
+        .call_from(
+            attacker,
+            Method::POST,
+            "/api/auth/register",
+            None,
+            Some(json!({})),
+        )
+        .await;
+    assert_eq!(status, StatusCode::TOO_MANY_REQUESTS);
+
+    // Another IP is not affected.
+    let (status, _) = app
+        .call(Method::POST, "/api/auth/login", None, Some(attempt))
+        .await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+
+    // Other routes are never rate limited.
+    for _ in 0..5 {
+        let (status, _) = app
+            .call_from(attacker, Method::GET, "/api/articles", None, None)
+            .await;
+        assert_eq!(status, StatusCode::OK);
+    }
 }
 
 #[tokio::test]

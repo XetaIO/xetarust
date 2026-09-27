@@ -50,7 +50,8 @@ async fn user_repository_round_trip() {
     let upper = Username::parse(&user.username.as_str().to_uppercase()).unwrap();
     assert!(repo.username_exists(&upper).await.unwrap());
 
-    user.promote_to_admin(now());
+    user.change_role(Role::Admin, UserId::generate(), Role::Admin, now())
+        .unwrap();
     repo.update(&user).await.unwrap();
     assert_eq!(
         repo.find_by_id(user.id).await.unwrap().unwrap().role,

@@ -18,6 +18,7 @@ pub enum ErrorCode {
     Unauthorized,
     Forbidden,
     Conflict,
+    TooManyRequests,
     InternalError,
 }
 
@@ -83,6 +84,9 @@ impl ApiError {
             AppError::Unauthorized(_) => (StatusCode::UNAUTHORIZED, ErrorCode::Unauthorized),
             AppError::Forbidden(_) => (StatusCode::FORBIDDEN, ErrorCode::Forbidden),
             AppError::Conflict(_) => (StatusCode::CONFLICT, ErrorCode::Conflict),
+            AppError::TooManyRequests(_) => {
+                (StatusCode::TOO_MANY_REQUESTS, ErrorCode::TooManyRequests)
+            }
             AppError::Internal(_) => (StatusCode::INTERNAL_SERVER_ERROR, ErrorCode::InternalError),
         }
     }
@@ -129,6 +133,10 @@ mod tests {
             (AppError::Unauthorized("x".into()), StatusCode::UNAUTHORIZED),
             (AppError::Forbidden("x".into()), StatusCode::FORBIDDEN),
             (AppError::Conflict("x".into()), StatusCode::CONFLICT),
+            (
+                AppError::TooManyRequests("x".into()),
+                StatusCode::TOO_MANY_REQUESTS,
+            ),
             (
                 AppError::Internal("x".into()),
                 StatusCode::INTERNAL_SERVER_ERROR,

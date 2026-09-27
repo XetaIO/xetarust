@@ -6,14 +6,14 @@ Tout le code métier vit dans un **bounded context** (`backend/identity`, `backe
 
 | Module | Contenu |
 |---|---|
-| `error` | `DomainError`, `DomainResult`, `AppError`, `AppResult`, `FieldErrors`, conversions `DomainError`/`validator` → `AppError` |
+| `error` | `DomainError`, `DomainResult`, `AppError` (dont `TooManyRequests` → 429), `AppResult`, `FieldErrors`, conversions `DomainError`/`validator` → `AppError` |
 | `pagination` | `PageRequest` (bornée 1..=50), `Page<T>` |
 | `text` | `validate_text`, `validate_optional_text`, `non_blank` |
 | `clock` | port `Clock`, `SystemClock` (précision µs), `FixedClock` (tests) |
 | `principal` | `Principal { user_id: Uuid, is_admin }` + `require_admin()`, port `PrincipalResolver` |
 | `dto` | `Paginated<T>`, `PageQuery`, `AuthorDto` (ts-rs → `types/api/shared/`) |
 | `define_id!` | macro des identifiants UUID v7 typés |
-| feature `http` | `ApiError`/`ApiResult`/`ErrorBody`/`ErrorCode`, extracteurs `JsonBody`, `PathParam`, `QueryParams`, `CurrentPrincipal`, `AdminPrincipal` |
+| feature `http` | `ApiError`/`ApiResult`/`ErrorBody`/`ErrorCode`, extracteurs `JsonBody`, `PathParam`, `QueryParams`, `ClientIp` (première IP de `X-Forwarded-For`, sinon `ConnectInfo`, sinon `None`), `CurrentPrincipal`, `AdminPrincipal` |
 | feature `persistence` | `connect`, `db_error` (SeaORM → `DomainError`), `corrupted` |
 
 Le kernel reste **petit** : n'y ajouter qu'un concept réellement partagé par plusieurs contextes, jamais un concept métier d'un seul contexte.
@@ -151,6 +151,7 @@ impl xetaravel_discussion::ArticleCatalog for PublishingArticleCatalog {
 - `persistence/mappers.rs` : `to_xxx(Model) -> DomainResult<Entity>` (re-valide les données, une ligne corrompue devient `DomainError::Repository` via `kernel::persistence::corrupted`) et `from_xxx(&Entity) -> ActiveModel` (tous les champs `Set`).
 - Toutes les erreurs SeaORM passent par `xetaravel_kernel::persistence::db_error()` : violation d'unicité / FK → `Conflict`, `RecordNotUpdated` → `NotFound`, le reste → `Repository`.
 - Travail CPU bloquant (Argon2) → `tokio::task::spawn_blocking`.
+- `security/` d'Identity : `Argon2PasswordHasher`, `JwtTokenService` (`JwtSettings`), et le port `HumanVerifier` implémenté par `TurnstileHumanVerifier` (`siteverify`, timeout 5 s, erreur réseau → `AppError::Internal`) ou `DisabledHumanVerifier` ; `IdentityModule::new` choisit selon `CaptchaSettings { turnstile_secret }`.
 
 ## Migrations
 
@@ -192,7 +193,7 @@ async fn delete_comment(
 
 ## Composition root (`backend/app`)
 
-- `config.rs` : `Config::from_env()` (inclut `JwtSettings` d'Identity).
+- `config.rs` : `Config::from_env()` (inclut `JwtSettings` et `CaptchaSettings` d'Identity, `RateLimitSettings` des routes d'auth).
 - `state.rs` : `AppState::build(db, &config)` construit `IdentityModule`, puis `PublishingModule` (avec `IdentityAuthorDirectory`), puis `DiscussionModule` (avec `PublishingArticleCatalog` + `IdentityAuthorDirectory`).
-- `router.rs` : `/api/health` + `merge` des routers des contextes.
-- `main.rs` : binaire `xetaravel` (`serve`, `make-admin <email>`), applique les migrations au démarrage.
+- `router.rs` : `/api/health` + `merge` des routers des contextes ; `identity::auth_router()` (login, register) y reçoit le `GovernorLayer` (rate limit par IP, erreurs au format `ApiError`), `identity::account_router()` le reste.
+- `main.rs` : binaire `xetaravel` (serveur HTTP uniquement), applique les migrations au démarrage ; sert avec `into_make_service_with_connect_info::<SocketAddr>()`.

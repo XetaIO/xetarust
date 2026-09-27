@@ -5,8 +5,8 @@
 | Méthode | Route | Accès | Contexte | Use case |
 |---|---|---|---|---|
 | GET | `/api/health` | public | app | — |
-| POST | `/api/auth/register` | public | Identity | `RegisterUser` → 201 `AuthResponse` |
-| POST | `/api/auth/login` | public | Identity | `LoginUser` → `AuthResponse` |
+| POST | `/api/auth/register` | public, captcha, rate limit IP | Identity | `RegisterUser` → 201 `AuthResponse` (429 `too_many_requests`) |
+| POST | `/api/auth/login` | public, captcha, rate limit IP | Identity | `LoginUser` → `AuthResponse` (429 `too_many_requests`) |
 | GET | `/api/auth/me` | membre | Identity | `GetCurrentUser` → `UserDto` |
 | GET | `/api/admin/users?page&per_page` | admin | Identity | `ListUsers` |
 | PATCH | `/api/admin/users/{id}/role` | admin | Identity | `ChangeUserRole` (auto-rétrogradation interdite) |
@@ -29,6 +29,8 @@ Pagination : `page` commence à 1, `per_page` ∈ [1, 50] (10 par défaut).
 
 - Nouveau compte = `member`. Email et username uniques (insensible à la casse).
 - Mot de passe 8–128 caractères, haché en Argon2id.
+- Login et register exigent `captcha_token` (réponse du widget Cloudflare Turnstile), vérifié **avant** tout accès base ou calcul Argon2 (port `HumanVerifier`) ; échec → 422 sur le champ `captcha_token`. Sans `TURNSTILE_SECRET`, le captcha est désactivé (tout jeton non vide est accepté).
+- Login et register sont limités par IP (`tower_governor`, seau commun aux deux routes) : `AUTH_RATE_LIMIT_BURST` tentatives (5), puis une toutes les `AUTH_RATE_LIMIT_PERIOD_SECONDS` (12 s) → 429 `too_many_requests`. L'IP vient de `X-Forwarded-For` posé par Next.js : l'API ne doit être joignable que par Next (`APP_ADDR=127.0.0.1:8080`).
 - Slug d'article/catégorie dérivé du titre/nom si vide, modifiable, unique ; conservé lors d'une édition sans slug.
 - Un article republié garde sa première date de publication.
 - Une catégorie contenant des articles ne peut pas être supprimée.

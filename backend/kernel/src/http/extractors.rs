@@ -1,13 +1,15 @@
-//! Request extractors shared by every HTTP adapter: authentication and
-//! rejection-aware wrappers around Axum's `Json`, `Path` and `Query` so every
-//! error shares the same JSON shape.
+//! Request extractors shared by every HTTP adapter: authentication, client
+//! IP and rejection-aware wrappers around Axum's `Json`, `Path` and `Query`
+//! so every error shares the same JSON shape.
 //!
 //! The principal extractors are generic over the router state: any state
 //! exposing an `Arc<dyn PrincipalResolver>` through [`FromRef`] works.
 
+use std::convert::Infallible;
+use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 
-use axum::extract::{FromRef, FromRequest, FromRequestParts};
+use axum::extract::{ConnectInfo, FromRef, FromRequest, FromRequestParts};
 use axum::http::header::AUTHORIZATION;
 use axum::http::request::Parts;
 
@@ -29,6 +31,47 @@ pub struct PathParam<T>(pub T);
 #[derive(FromRequestParts)]
 #[from_request(via(axum::extract::Query), rejection(ApiError))]
 pub struct QueryParams<T>(pub T);
+
+/// Name of the header carrying the client IP set by the trusted proxy (Next.js).
+const X_FORWARDED_FOR: &str = "x-forwarded-for";
+
+/// IP address of the client, when it can be determined.
+///
+/// Reads the first address of `X-Forwarded-For`, then falls back to the TCP
+/// peer address (`ConnectInfo`). The header is trusted: the API must only be
+/// reachable by the Next.js server, which sets it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ClientIp(pub Option<IpAddr>);
+
+impl<S> FromRequestParts<S> for ClientIp
+where
+    S: Send + Sync,
+{
+    type Rejection = Infallible;
+
+    /// Resolves the client IP; never fails.
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let peer = parts
+            .extensions
+            .get::<ConnectInfo<SocketAddr>>()
+            .map(|ConnectInfo(addr)| addr.ip());
+        Ok(Self(forwarded_ip(parts).or(peer)))
+    }
+}
+
+/// Reads the first valid address of the `X-Forwarded-For` header.
+fn forwarded_ip(parts: &Parts) -> Option<IpAddr> {
+    parts
+        .headers
+        .get(X_FORWARDED_FOR)?
+        .to_str()
+        .ok()?
+        .split(',')
+        .next()?
+        .trim()
+        .parse()
+        .ok()
+}
 
 /// The authenticated caller, resolved from the `Authorization: Bearer` header.
 pub struct CurrentPrincipal(pub Principal);
@@ -130,6 +173,47 @@ mod tests {
         assert_eq!(bearer_token(&parts(Some("Basic abc"))), None);
         assert_eq!(bearer_token(&parts(Some("Bearer "))), None);
         assert_eq!(bearer_token(&parts(None)), None);
+    }
+
+    /// Extracts the client IP of request parts built by `build`.
+    async fn client_ip(build: impl FnOnce(&mut Parts)) -> Option<IpAddr> {
+        let mut parts = parts(None);
+        build(&mut parts);
+        let Ok(ClientIp(ip)) = ClientIp::from_request_parts(&mut parts, &()).await;
+        ip
+    }
+
+    #[tokio::test]
+    async fn client_ip_prefers_the_first_forwarded_address() {
+        let ip = client_ip(|parts| {
+            parts
+                .headers
+                .insert(X_FORWARDED_FOR, "203.0.113.7, 10.0.0.1".parse().unwrap());
+            parts
+                .extensions
+                .insert(ConnectInfo(SocketAddr::from(([127, 0, 0, 1], 4000))));
+        })
+        .await;
+        assert_eq!(ip, Some("203.0.113.7".parse().unwrap()));
+    }
+
+    #[tokio::test]
+    async fn client_ip_falls_back_to_the_peer_address() {
+        let ip = client_ip(|parts| {
+            parts
+                .headers
+                .insert(X_FORWARDED_FOR, "garbage".parse().unwrap());
+            parts
+                .extensions
+                .insert(ConnectInfo(SocketAddr::from(([127, 0, 0, 1], 4000))));
+        })
+        .await;
+        assert_eq!(ip, Some("127.0.0.1".parse().unwrap()));
+    }
+
+    #[tokio::test]
+    async fn client_ip_is_unknown_without_header_nor_peer() {
+        assert_eq!(client_ip(|_| {}).await, None);
     }
 
     #[tokio::test]

@@ -78,6 +78,10 @@ pub enum AppError {
     #[error("{0}")]
     Conflict(String),
 
+    /// The caller sent too many requests in a short period (rate limit).
+    #[error("{0}")]
+    TooManyRequests(String),
+
     /// An unexpected technical failure.
     #[error("internal error: {0}")]
     Internal(String),
