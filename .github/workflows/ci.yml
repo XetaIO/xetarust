@@ -64,6 +64,9 @@ jobs:
     defaults:
       run:
         working-directory: frontend
+    env:
+      # Cloudflare test site key: required by the guard of next.config.ts.
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -80,8 +83,10 @@ jobs:
     name: E2E · Playwright
     runs-on: ubuntu-latest
     env:
-      # Captcha disabled (no TURNSTILE_SECRET / site key) and a rate limit out
-      # of reach: every e2e request comes from the same IP.
+      # Captcha with the Cloudflare test keys (the secret comes from
+      # .env.example; the widget and siteverify reach the real Cloudflare), and
+      # a rate limit out of reach: every e2e request comes from the same IP.
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
       AUTH_RATE_LIMIT_BURST: "1000"
     steps:
       - uses: actions/checkout@v5

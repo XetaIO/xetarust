@@ -7,15 +7,17 @@
 
 use std::net::{IpAddr, Ipv6Addr};
 
-use axum::Router;
 use axum::body::Body;
 use axum::body::Bytes;
 use axum::http::{HeaderMap, Method, Request, StatusCode, header};
+use axum::routing::post;
+use axum::{Json, Router};
 use http_body_util::BodyExt;
 use migration::testing::test_database;
 use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Statement};
 use serde_json::{Value, json};
 use tempfile::TempDir;
+use tokio::net::TcpListener;
 use tower::ServiceExt;
 use uuid::Uuid;
 use xetaravel_app::{AppState, Config, RateLimitSettings, router};
@@ -23,6 +25,29 @@ use xetaravel_identity::{CaptchaSettings, JwtSettings};
 
 /// Header of a PNG file: enough for the format detection.
 const PNG: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3];
+
+/// Turnstile secret the API sends to the fake `siteverify`.
+const CAPTCHA_SECRET: &str = "test-secret";
+
+/// Captcha token the fake `siteverify` accepts.
+const CAPTCHA_TOKEN: &str = "valid";
+
+/// Fake Cloudflare `siteverify`: succeeds only for [`CAPTCHA_TOKEN`] sent
+/// with [`CAPTCHA_SECRET`].
+async fn siteverify(Json(body): Json<Value>) -> Json<Value> {
+    let success = body["secret"] == CAPTCHA_SECRET && body["response"] == CAPTCHA_TOKEN;
+    Json(json!({ "success": success, "error-codes": [] }))
+}
+
+/// Starts the fake Cloudflare server on a random local port and returns its
+/// `siteverify` URL.
+async fn fake_cloudflare() -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let app = Router::new().route("/siteverify", post(siteverify));
+    tokio::spawn(async move { axum::serve(listener, app).await });
+    format!("http://{addr}/siteverify")
+}
 
 /// Test harness holding the router and the test database.
 struct TestApp {
@@ -35,7 +60,8 @@ struct TestApp {
 
 impl TestApp {
     /// Connects to the (migrated) test database and builds the production
-    /// router, with the captcha disabled and a rate limit out of reach.
+    /// router, with the captcha checked by a fake Cloudflare and a rate limit
+    /// out of reach.
     async fn start() -> Self {
         Self::start_with(RateLimitSettings {
             burst: 10_000,
@@ -54,7 +80,10 @@ impl TestApp {
                 secret: "test-secret-test-secret-test-secret!".into(),
                 ttl: chrono::Duration::hours(1),
             },
-            captcha: CaptchaSettings::default(),
+            captcha: CaptchaSettings {
+                turnstile_secret: CAPTCHA_SECRET.into(),
+                siteverify_url: fake_cloudflare().await,
+            },
             auth_rate_limit,
             app_addr: "127.0.0.1:0".into(),
             cors_origin: "http://localhost:3000".into(),
@@ -156,7 +185,7 @@ impl TestApp {
                 Method::POST,
                 "/api/auth/register",
                 None,
-                Some(json!({ "username": format!("user_{suffix}"), "email": email, "password": "super-secret", "captcha_token": "test" })),
+                Some(json!({ "username": format!("user_{suffix}"), "email": email, "password": "super-secret", "captcha_token": CAPTCHA_TOKEN })),
             )
             .await;
         assert_eq!(status, StatusCode::CREATED, "{body}");
@@ -241,7 +270,7 @@ async fn register_login_and_me() {
             Method::POST,
             "/api/auth/login",
             None,
-            Some(json!({ "email": email.to_uppercase(), "password": "super-secret", "captcha_token": "test" })),
+            Some(json!({ "email": email.to_uppercase(), "password": "super-secret", "captcha_token": CAPTCHA_TOKEN })),
         )
         .await;
     assert_eq!(status, StatusCode::OK);
@@ -252,7 +281,7 @@ async fn register_login_and_me() {
             Method::POST,
             "/api/auth/login",
             None,
-            Some(json!({ "email": email, "password": "wrong-password", "captcha_token": "test" })),
+            Some(json!({ "email": email, "password": "wrong-password", "captcha_token": CAPTCHA_TOKEN })),
         )
         .await;
     assert_eq!(status, StatusCode::UNAUTHORIZED);
@@ -269,7 +298,7 @@ async fn registration_errors_are_reported_per_field() {
             Method::POST,
             "/api/auth/register",
             None,
-            Some(json!({ "username": "x", "email": email, "password": "short", "captcha_token": "test" })),
+            Some(json!({ "username": "x", "email": email, "password": "short", "captcha_token": CAPTCHA_TOKEN })),
         )
         .await;
 
@@ -280,6 +309,56 @@ async fn registration_errors_are_reported_per_field() {
 }
 
 #[tokio::test]
+async fn login_rejects_a_failed_captcha() {
+    let app = TestApp::start().await;
+    let (_, email) = app.register().await;
+
+    let (status, body) = app
+        .call(
+            Method::POST,
+            "/api/auth/login",
+            None,
+            Some(json!({ "email": email, "password": "super-secret", "captcha_token": "forged" })),
+        )
+        .await;
+
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(body["error"], "validation_error");
+    assert!(body["fields"]["captcha_token"].is_array());
+}
+
+#[tokio::test]
+async fn register_rejects_a_failed_captcha() {
+    let app = TestApp::start().await;
+    let suffix = &Uuid::now_v7().simple().to_string()[20..];
+    let email = format!("user_{suffix}@example.com");
+
+    let (status, body) = app
+        .call(
+            Method::POST,
+            "/api/auth/register",
+            None,
+            Some(json!({ "username": format!("user_{suffix}"), "email": email, "password": "super-secret", "captcha_token": "forged" })),
+        )
+        .await;
+
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(body["error"], "validation_error");
+    assert!(body["fields"]["captcha_token"].is_array());
+
+    // No account was created: the same identity can still register.
+    let (status, body) = app
+        .call(
+            Method::POST,
+            "/api/auth/register",
+            None,
+            Some(json!({ "username": format!("user_{suffix}"), "email": email, "password": "super-secret", "captcha_token": CAPTCHA_TOKEN })),
+        )
+        .await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+}
+
+#[tokio::test]
 async fn auth_routes_are_rate_limited_per_ip() {
     let app = TestApp::start_with(RateLimitSettings {
         burst: 2,
@@ -287,7 +366,7 @@ async fn auth_routes_are_rate_limited_per_ip() {
     })
     .await;
     let attacker = unique_ip();
-    let attempt = json!({ "email": "ghost@example.com", "password": "wrong-password", "captcha_token": "test" });
+    let attempt = json!({ "email": "ghost@example.com", "password": "wrong-password", "captcha_token": CAPTCHA_TOKEN });
 
     for _ in 0..2 {
         let (status, _) = app

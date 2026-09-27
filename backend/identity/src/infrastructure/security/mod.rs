@@ -1,12 +1,10 @@
 //! Security adapters: password hashing, access tokens and captcha.
 
 mod argon2_password_hasher;
-mod disabled_human_verifier;
 mod jwt_token_service;
 mod turnstile_human_verifier;
 
 pub use argon2_password_hasher::Argon2PasswordHasher;
-pub use disabled_human_verifier::DisabledHumanVerifier;
 pub use jwt_token_service::JwtTokenService;
 pub use turnstile_human_verifier::{TURNSTILE_SITEVERIFY_URL, TurnstileHumanVerifier};
 
@@ -22,8 +20,10 @@ pub struct JwtSettings {
 }
 
 /// Settings of the captcha, read from the environment by the composition root.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct CaptchaSettings {
-    /// Cloudflare Turnstile secret key; `None` disables the captcha.
-    pub turnstile_secret: Option<String>,
+    /// Cloudflare Turnstile secret key.
+    pub turnstile_secret: String,
+    /// `siteverify` endpoint ([`TURNSTILE_SITEVERIFY_URL`] in production, a fake server in tests).
+    pub siteverify_url: String,
 }

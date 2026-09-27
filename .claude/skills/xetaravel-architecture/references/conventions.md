@@ -29,7 +29,7 @@ Pagination : `page` commence à 1, `per_page` ∈ [1, 50] (10 par défaut).
 
 - Nouveau compte = `member`. Email et username uniques (insensible à la casse).
 - Mot de passe 8–128 caractères, haché en Argon2id.
-- Login et register exigent `captcha_token` (réponse du widget Cloudflare Turnstile), vérifié **avant** tout accès base ou calcul Argon2 (port `HumanVerifier`) ; échec → 422 sur le champ `captcha_token`. Sans `TURNSTILE_SECRET`, le captcha est désactivé (tout jeton non vide est accepté).
+- Login et register exigent `captcha_token` (réponse du widget Cloudflare Turnstile), vérifié **avant** tout accès base ou calcul Argon2 (port `HumanVerifier`) ; échec → 422 sur le champ `captcha_token`. Captcha obligatoire (l'API refuse de démarrer sans `TURNSTILE_SECRET`, Next.js sans `NEXT_PUBLIC_TURNSTILE_SITE_KEY`) ; clés de test Cloudflare en dev/e2e.
 - Login et register sont limités par IP (`tower_governor`, seau commun aux deux routes) : `AUTH_RATE_LIMIT_BURST` tentatives (5), puis une toutes les `AUTH_RATE_LIMIT_PERIOD_SECONDS` (12 s) → 429 `too_many_requests`. L'IP vient de `X-Forwarded-For` posé par Next.js : l'API ne doit être joignable que par Next (`APP_ADDR=127.0.0.1:8080`).
 - Slug d'article/catégorie dérivé du titre/nom si vide, modifiable, unique ; conservé lors d'une édition sans slug.
 - Un article republié garde sa première date de publication.

@@ -21,9 +21,9 @@ npm install
 npm run dev                           # http://localhost:3000
 ```
 
-Login and registration are protected by Cloudflare Turnstile (`TURNSTILE_SECRET` in `.env`,
-`NEXT_PUBLIC_TURNSTILE_SITE_KEY` in `frontend/.env.local`, both empty = disabled) and a per-IP rate
-limit (`AUTH_RATE_LIMIT_*`).
+Login and registration are protected by a mandatory Cloudflare Turnstile captcha
+(`TURNSTILE_SECRET` in `.env`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` in `frontend/.env.local`: the API and
+Next.js refuse to start without them) and a per-IP rate limit (`AUTH_RATE_LIMIT_*`).
 
 > **Deployment**: the API trusts the `X-Forwarded-For` header sent by Next.js to identify clients.
 > Keep it reachable by the Next.js server only (`APP_ADDR=127.0.0.1:8080`, the default), and make the

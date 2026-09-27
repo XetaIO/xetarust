@@ -65,9 +65,6 @@ async fn bootstrap() -> Result<(Config, AppState), Box<dyn std::error::Error>> {
 /// Starts the HTTP server until Ctrl+C.
 async fn serve() -> CliResult {
     let (config, state) = bootstrap().await?;
-    if config.captcha.turnstile_secret.is_none() {
-        tracing::warn!("TURNSTILE_SECRET is not set: the captcha of login/register is disabled");
-    }
 
     let cors = CorsLayer::new()
         .allow_origin(config.cors_origin.parse::<HeaderValue>()?)

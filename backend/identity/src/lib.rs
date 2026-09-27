@@ -18,5 +18,5 @@ mod module;
 pub use application::contract::IdentityDirectory;
 pub use http::{account_router, auth_router, router};
 pub use infrastructure::migrations::migrations;
-pub use infrastructure::security::{CaptchaSettings, JwtSettings};
+pub use infrastructure::security::{CaptchaSettings, JwtSettings, TURNSTILE_SITEVERIFY_URL};
 pub use module::IdentityModule;

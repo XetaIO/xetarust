@@ -57,17 +57,11 @@ const COPY = {
     },
 };
 
-/** Public Turnstile site key, inlined at build time; absent = captcha disabled. */
-const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
-
-/** Name of the field holding the captcha token (the one Turnstile injects). */
-const CAPTCHA_FIELD = "cf-turnstile-response";
-
 /**
- * Token sent when the captcha is disabled (dev, e2e): the API then runs
- * without a Turnstile secret and accepts any token, but still requires one.
+ * Public Turnstile site key, inlined at build time. Its presence is enforced
+ * by `next.config.ts`, which refuses to start or build without it.
  */
-const CAPTCHA_DISABLED_TOKEN = "captcha-disabled";
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
 /** Login or registration form bound to its Server Action, protected by Turnstile. */
 export function AuthForm({ mode, action, next }: AuthFormProps) {
@@ -90,7 +84,7 @@ export function AuthForm({ mode, action, next }: AuthFormProps) {
         }
     }, [state]);
 
-    const waitingForCaptcha = Boolean(TURNSTILE_SITE_KEY) && !token;
+    const waitingForCaptcha = !token;
 
     return (
         <Card className="glass w-full max-w-md">
@@ -117,18 +111,14 @@ export function AuthForm({ mode, action, next }: AuthFormProps) {
                         </div>
                     ))}
                     <div className="space-y-2">
-                        {TURNSTILE_SITE_KEY ? (
-                            <Turnstile
-                                ref={captcha}
-                                siteKey={TURNSTILE_SITE_KEY}
-                                options={{ theme: "dark", size: "flexible" }}
-                                onSuccess={setToken}
-                                onExpire={() => setToken(null)}
-                                onError={() => setToken(null)}
-                            />
-                        ) : (
-                            <input type="hidden" name={CAPTCHA_FIELD} value={CAPTCHA_DISABLED_TOKEN} />
-                        )}
+                        <Turnstile
+                            ref={captcha}
+                            siteKey={TURNSTILE_SITE_KEY}
+                            options={{ theme: "dark", size: "flexible" }}
+                            onSuccess={setToken}
+                            onExpire={() => setToken(null)}
+                            onError={() => setToken(null)}
+                        />
                         <FieldError messages={state?.fields?.captcha_token} />
                     </div>
                 </CardContent>

@@ -15,8 +15,7 @@ use crate::application::use_cases::{
 use crate::domain::UserRepository;
 use crate::infrastructure::persistence::SeaOrmUserRepository;
 use crate::infrastructure::security::{
-    Argon2PasswordHasher, CaptchaSettings, DisabledHumanVerifier, JwtSettings, JwtTokenService,
-    TURNSTILE_SITEVERIFY_URL, TurnstileHumanVerifier,
+    Argon2PasswordHasher, CaptchaSettings, JwtSettings, JwtTokenService, TurnstileHumanVerifier,
 };
 
 /// Every use case of the Identity context, ready to be shared by the HTTP
@@ -34,7 +33,7 @@ pub struct IdentityModule {
 
 impl IdentityModule {
     /// Wires the production adapters (PostgreSQL, Argon2, JWT, Turnstile)
-    /// into the use cases. Without a Turnstile secret, the captcha is disabled.
+    /// into the use cases. The captcha is always checked against `siteverify`.
     pub fn new(
         db: DatabaseConnection,
         jwt: &JwtSettings,
@@ -44,7 +43,10 @@ impl IdentityModule {
         let users: Arc<dyn UserRepository> = Arc::new(SeaOrmUserRepository::new(db));
         let hasher: Arc<dyn PasswordHasher> = Arc::new(Argon2PasswordHasher);
         let tokens: Arc<dyn TokenService> = Arc::new(JwtTokenService::new(jwt, clock.clone()));
-        let humans = human_verifier(captcha);
+        let humans: Arc<dyn HumanVerifier> = Arc::new(TurnstileHumanVerifier::new(
+            captcha.turnstile_secret.clone(),
+            captcha.siteverify_url.clone(),
+        ));
 
         Self {
             register: RegisterUser::new(
@@ -71,17 +73,5 @@ impl IdentityModule {
     /// Returns the public directory other contexts use to name authors.
     pub fn directory(&self) -> Arc<dyn IdentityDirectory> {
         self.public_profiles.clone()
-    }
-}
-
-/// Picks the captcha adapter: Turnstile when a secret is configured,
-/// otherwise the always-accepting one.
-fn human_verifier(captcha: &CaptchaSettings) -> Arc<dyn HumanVerifier> {
-    match &captcha.turnstile_secret {
-        Some(secret) => Arc::new(TurnstileHumanVerifier::new(
-            secret.clone(),
-            TURNSTILE_SITEVERIFY_URL,
-        )),
-        None => Arc::new(DisabledHumanVerifier),
     }
 }

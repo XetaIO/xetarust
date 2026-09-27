@@ -151,7 +151,7 @@ impl xetaravel_discussion::ArticleCatalog for PublishingArticleCatalog {
 - `persistence/mappers.rs` : `to_xxx(Model) -> DomainResult<Entity>` (re-valide les données, une ligne corrompue devient `DomainError::Repository` via `kernel::persistence::corrupted`) et `from_xxx(&Entity) -> ActiveModel` (tous les champs `Set`).
 - Toutes les erreurs SeaORM passent par `xetaravel_kernel::persistence::db_error()` : violation d'unicité / FK → `Conflict`, `RecordNotUpdated` → `NotFound`, le reste → `Repository`.
 - Travail CPU bloquant (Argon2) → `tokio::task::spawn_blocking`.
-- `security/` d'Identity : `Argon2PasswordHasher`, `JwtTokenService` (`JwtSettings`), et le port `HumanVerifier` implémenté par `TurnstileHumanVerifier` (`siteverify`, timeout 5 s, erreur réseau → `AppError::Internal`) ou `DisabledHumanVerifier` ; `IdentityModule::new` choisit selon `CaptchaSettings { turnstile_secret }`.
+- `security/` d'Identity : `Argon2PasswordHasher`, `JwtTokenService` (`JwtSettings`), et le port `HumanVerifier` implémenté par `TurnstileHumanVerifier` (`siteverify`, timeout 5 s, erreur réseau → `AppError::Internal`) (seule implémentation : le captcha est obligatoire) ; `IdentityModule::new` le construit depuis `CaptchaSettings { turnstile_secret, siteverify_url }` (`TURNSTILE_SITEVERIFY_URL` en production, faux serveur dans les tests).
 
 ## Migrations
 
@@ -193,7 +193,7 @@ async fn delete_comment(
 
 ## Composition root (`backend/app`)
 
-- `config.rs` : `Config::from_env()` (inclut `JwtSettings` et `CaptchaSettings` d'Identity, `RateLimitSettings` des routes d'auth).
+- `config.rs` : `Config::from_env()` (exige `TURNSTILE_SECRET` non vide ; inclut `JwtSettings` et `CaptchaSettings` d'Identity, `RateLimitSettings` des routes d'auth).
 - `state.rs` : `AppState::build(db, &config)` construit `IdentityModule`, puis `PublishingModule` (avec `IdentityAuthorDirectory`), puis `DiscussionModule` (avec `PublishingArticleCatalog` + `IdentityAuthorDirectory`).
 - `router.rs` : `/api/health` + `merge` des routers des contextes ; `identity::auth_router()` (login, register) y reçoit le `GovernorLayer` (rate limit par IP, erreurs au format `ApiError`), `identity::account_router()` le reste.
 - `main.rs` : binaire `xetaravel` (serveur HTTP uniquement), applique les migrations au démarrage ; sert avec `into_make_service_with_connect_info::<SocketAddr>()`.
