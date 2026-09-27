@@ -24,16 +24,16 @@ interface CommentSectionProps {
 /** Comments of an article; members can post, authors and admins can delete. */
 export function CommentSection({ slug, comments, viewer }: CommentSectionProps) {
     return (
-        <section aria-labelledby="comments" className="mt-16 border-t border-white/10 pt-10">
+        <section aria-labelledby="comments" className="mt-12 border-t border-white/10 pt-8 sm:mt-16 sm:pt-10">
             <h2 id="comments" className="text-2xl font-semibold">
                 Comments <span className="text-muted-foreground">({comments.length})</span>
             </h2>
 
             <ul className="mt-6 space-y-4">
                 {comments.map((comment) => (
-                    <li key={comment.id} className="rounded-2xl border border-white/5 bg-card/50 p-5">
-                        <div className="flex items-center justify-between gap-4">
-                            <p className="text-sm">
+                    <li key={comment.id} className="rounded-2xl border border-white/5 bg-card/50 p-4 sm:p-5">
+                        <div className="flex items-start justify-between gap-4">
+                            <p className="min-w-0 text-sm break-words">
                                 <span className="font-medium">{comment.author.username}</span>
                                 <span className="text-muted-foreground"> · {formatDate(comment.created_at)}</span>
                             </p>
@@ -47,7 +47,7 @@ export function CommentSection({ slug, comments, viewer }: CommentSectionProps) 
                                 </ConfirmAction>
                             )}
                         </div>
-                        <p className="mt-2 whitespace-pre-line text-muted-foreground">{comment.content}</p>
+                        <p className="mt-2 break-words whitespace-pre-line text-muted-foreground">{comment.content}</p>
                     </li>
                 ))}
                 {comments.length === 0 && <li className="text-muted-foreground">No comment yet — be the first!</li>}
@@ -57,7 +57,7 @@ export function CommentSection({ slug, comments, viewer }: CommentSectionProps) 
                 {viewer ? (
                     <CommentForm slug={slug} />
                 ) : (
-                    <p className="rounded-2xl border border-dashed border-white/10 p-6 text-center text-muted-foreground">
+                    <p className="rounded-2xl border border-dashed border-white/10 p-4 text-center text-muted-foreground sm:p-6">
                         <Link href={`/login?next=/blog/${slug}`} className="text-brand-amber hover:underline">
                             Log in
                         </Link>{" "}

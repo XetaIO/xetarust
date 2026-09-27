@@ -136,7 +136,8 @@ export const profile = {
     {
       name: "Xeta",
       logo: "/images/projects/xeta.png",
-      description: "Blog and administration panel, the ancestor of Xetaravel.",
+      description:
+        "A forum, blog, private conversations, 2FA, logs and administration panel, the ancestor of Xetaravel.",
       tech: ["CakePHP", "MySQL", "Bootstrap", "2FA", "CKEditor", "jQuery", "i18n"],
       links: [{ label: "GitHub", href: "https://github.com/XetaIO/Xeta" }],
     },

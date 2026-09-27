@@ -45,15 +45,15 @@ export default async function ArticlePage({ params }: PageProps<"/blog/[slug]">)
                 <ArrowLeft className="size-4" /> All articles
             </Link>
 
-            <header className="mt-8 mb-10">
+            <header className="mt-6 mb-8 sm:mt-8 sm:mb-10">
                 <Link
                     href={`/blog/category/${article.category.slug}`}
                     className="rounded-full bg-brand-orange/15 px-3 py-1 text-xs font-medium text-brand-orange"
                 >
                     {article.category.name}
                 </Link>
-                <h1 className="mt-5 text-4xl font-semibold tracking-tight text-balance sm:text-5xl">{article.title}</h1>
-                {article.excerpt && <p className="mt-4 text-xl text-muted-foreground">{article.excerpt}</p>}
+                <h1 className="mt-5 text-3xl font-semibold tracking-tight text-balance sm:text-5xl">{article.title}</h1>
+                {article.excerpt && <p className="mt-4 text-lg text-muted-foreground sm:text-xl">{article.excerpt}</p>}
                 <p className="mt-6 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                     <span>
                         by <span className="text-foreground">{article.author.username}</span>
@@ -68,7 +68,7 @@ export default async function ArticlePage({ params }: PageProps<"/blog/[slug]">)
             </header>
 
             {article.cover_image && (
-                <figure className="relative mb-12 aspect-2/1 overflow-hidden rounded-2xl border border-white/5 bg-card">
+                <figure className="relative mb-8 aspect-video overflow-hidden rounded-xl border sm:mb-12 sm:aspect-2/1 sm:rounded-2xl border-white/5 bg-card">
                     <Image
                         src={coverUrl(article.cover_image)}
                         alt={article.title}

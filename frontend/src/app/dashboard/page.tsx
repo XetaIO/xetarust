@@ -54,10 +54,10 @@ export default async function DashboardPage() {
       <ul className="divide-y divide-white/5 rounded-xl border border-white/5">
         {articles.items.map((article) => (
           <li key={article.id} className="flex items-center justify-between gap-4 p-4">
-            <Link href={`/dashboard/articles/${article.id}/edit`} className="font-medium hover:underline">
+            <Link href={`/dashboard/articles/${article.id}/edit`} className="min-w-0 truncate font-medium hover:underline">
               {article.title}
             </Link>
-            <span className="text-sm text-muted-foreground">
+            <span className="shrink-0 text-sm text-muted-foreground">
               {article.is_published ? formatDate(article.published_at ?? article.created_at) : "Draft"}
             </span>
           </li>

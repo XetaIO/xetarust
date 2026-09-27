@@ -105,7 +105,7 @@ export function ArticleForm({ categories, article, coverError }: ArticleFormProp
             </div>
 
             <div className="space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                     <Label htmlFor="content">Content (Markdown)</Label>
                     <div className="flex rounded-lg bg-white/5 p-0.5 text-sm">
                         {(["write", "preview"] as const).map((value) => (
@@ -129,11 +129,11 @@ export function ArticleForm({ categories, article, coverError }: ArticleFormProp
                     rows={22}
                     value={content}
                     onChange={(event) => setContent(event.target.value)}
-                    className={cn("font-mono text-sm", tab === "preview" && "hidden")}
+                    className={cn("min-h-40 text-sm sm:min-h-80", tab === "preview" && "hidden")}
                     aria-invalid={!!errors.content}
                 />
                 {tab === "preview" && (
-                    <div className="prose prose-invert min-h-96 max-w-none rounded-lg border border-white/10 p-6">
+                    <div className="prose prose-sm prose-invert min-h-80 max-w-none overflow-x-auto rounded-lg border border-white/10 p-4 sm:prose-base sm:min-h-128 sm:p-6">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{content || "*Nothing to preview.*"}</ReactMarkdown>
                     </div>
                 )}
@@ -150,11 +150,14 @@ export function ArticleForm({ categories, article, coverError }: ArticleFormProp
                 Publish this article
             </label>
 
-            <div className="flex gap-3">
-                <Button type="submit" size="lg" disabled={pending}>
+            <div className="flex flex-col-reverse gap-3 sm:flex-row">
+                <Button type="submit" size="lg" disabled={pending} className="w-full sm:w-auto">
                     {pending ? "Saving…" : article ? "Save changes" : "Create article"}
                 </Button>
-                <Link href="/dashboard/articles" className={buttonVariants({ variant: "ghost", size: "lg" })}>
+                <Link
+                    href="/dashboard/articles"
+                    className={buttonVariants({ variant: "ghost", size: "lg", className: "w-full sm:w-auto" })}
+                >
                     Cancel
                 </Link>
             </div>

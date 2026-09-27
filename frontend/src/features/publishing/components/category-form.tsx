@@ -30,7 +30,7 @@ export function CategoryForm({ category }: { category?: CategoryDto }) {
 
     return (
         <form ref={formRef} action={action} className="space-y-2">
-            <div className="grid gap-2 sm:grid-cols-[1fr_1fr_2fr_auto]">
+            <div className="grid gap-2 md:grid-cols-[1fr_1fr_2fr_auto]">
                 <div>
                     <Input name="name" placeholder="Name" defaultValue={category?.name} required aria-label="Name" />
                     <FieldError messages={errors.name} />
@@ -48,7 +48,7 @@ export function CategoryForm({ category }: { category?: CategoryDto }) {
                     />
                     <FieldError messages={errors.description} />
                 </div>
-                <Button type="submit" variant={category ? "outline" : "default"} disabled={pending}>
+                <Button type="submit" variant={category ? "outline" : "default"} disabled={pending} className="w-full md:w-auto">
                     {category ? "Save" : "Add"}
                 </Button>
             </div>

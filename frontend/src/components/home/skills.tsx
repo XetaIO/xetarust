@@ -17,7 +17,6 @@ const MARQUEE_REPEAT = 2;
  */
 function Marquee({ items, reverse = false }: { items: string[]; reverse?: boolean }) {
     const badges = Array.from({ length: MARQUEE_REPEAT }, () => items).flat();
-    console.log(badges);
 
     return (
         <div className="group relative flex gap-3 overflow-hidden mask-[linear-gradient(to_right,transparent,black_10%,black_90%,transparent)] [--marquee-duration:80s]">
@@ -32,7 +31,7 @@ function Marquee({ items, reverse = false }: { items: string[]; reverse?: boolea
                     {badges.map((item, index) => (
                         <span
                             key={`${item}-${index}`}
-                            className="glass rounded-full px-5 py-2 font-mono text-sm whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground"
+                            className="glass rounded-full px-5 py-2 text-sm whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground"
                         >
                             {item}
                         </span>
@@ -48,8 +47,8 @@ export function Skills() {
     const half = Math.ceil(profile.tools.length / 2);
 
     return (
-        <section id="skills" className="scroll-mt-24 py-32">
-            <div className="mx-auto max-w-6xl px-6">
+        <section id="skills" className="scroll-mt-24 py-20 sm:py-32">
+            <div className="mx-auto max-w-6xl px-4 sm:px-6">
                 <SectionHeading
                     eyebrow="Skills"
                     title="A versatile toolbox."
@@ -62,8 +61,8 @@ export function Skills() {
                 <Marquee items={profile.tools.slice(half)} reverse />
             </div>
 
-            <div className="mx-auto mt-20 grid max-w-6xl px-6">
-                <Reveal className="glass rounded-3xl p-8">
+            <div className="mx-auto mt-20 grid max-w-6xl px-4 sm:px-6">
+                <Reveal className="glass rounded-3xl p-6 sm:p-8">
                     <h3 className="text-xl font-semibold">Engineering practices</h3>
                     <p className="mt-2 text-muted-foreground">What makes a project last beyond its first release.</p>
                     <ul className="mt-6 flex flex-wrap gap-2">

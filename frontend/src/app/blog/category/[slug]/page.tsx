@@ -28,7 +28,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps<"
     return (
         <>
             <div className="mb-10">
-                <p className="font-mono text-xs tracking-[0.3em] text-brand-amber uppercase">Category</p>
+                <p className="text-xs tracking-[0.3em] text-brand-amber uppercase">Category</p>
                 <h1 className="mt-2 text-4xl font-semibold tracking-tight">{category.name}</h1>
                 {category.description && <p className="mt-3 text-lg text-muted-foreground">{category.description}</p>}
             </div>

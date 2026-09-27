@@ -18,7 +18,7 @@ export default async function CategoriesPage() {
         <>
             <PageHeader title="Categories" description="Organize the articles of the blog." />
 
-            <Card className="mb-8">
+            <Card className="mb-6 sm:mb-8">
                 <CardHeader>
                     <CardTitle>New category</CardTitle>
                 </CardHeader>
@@ -29,17 +29,19 @@ export default async function CategoriesPage() {
 
             <ul className="space-y-3">
                 {categories.map((category) => (
-                    <li key={category.id} className="flex items-start gap-2 rounded-xl border border-white/5 p-4">
-                        <div className="flex-1">
+                    <li key={category.id} className="flex flex-col gap-2 rounded-xl border border-white/5 p-4 sm:flex-row sm:items-start">
+                        <div className="min-w-0 flex-1">
                             <CategoryForm category={category} />
                         </div>
-                        <ConfirmAction
-                            action={deleteCategory.bind(null, category.id)}
-                            title={`Delete "${category.name}"?`}
-                            description="Only categories without articles can be deleted."
-                        >
-                            <Trash2 />
-                        </ConfirmAction>
+                        <div className="self-end sm:self-start">
+                            <ConfirmAction
+                                action={deleteCategory.bind(null, category.id)}
+                                title={`Delete "${category.name}"?`}
+                                description="Only categories without articles can be deleted."
+                            >
+                                <Trash2 />
+                            </ConfirmAction>
+                        </div>
                     </li>
                 ))}
                 {categories.length === 0 && <li className="text-muted-foreground">No category yet.</li>}

@@ -35,17 +35,17 @@ export default async function DashboardArticlesPage({ searchParams }: PageProps<
                     <TableHeader>
                         <TableRow>
                             <TableHead>Title</TableHead>
-                            <TableHead>Category</TableHead>
+                            <TableHead className="hidden md:table-cell">Category</TableHead>
                             <TableHead>Status</TableHead>
-                            <TableHead>Updated</TableHead>
+                            <TableHead className="hidden lg:table-cell">Updated</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {articles.items.map((article) => (
                             <TableRow key={article.id}>
-                                <TableCell className="max-w-xs truncate font-medium">{article.title}</TableCell>
-                                <TableCell>{article.category.name}</TableCell>
+                                <TableCell className="w-full max-w-0 truncate font-medium">{article.title}</TableCell>
+                                <TableCell className="hidden md:table-cell">{article.category.name}</TableCell>
                                 <TableCell>
                                     {article.is_published ? (
                                         <Badge>Published</Badge>
@@ -53,7 +53,7 @@ export default async function DashboardArticlesPage({ searchParams }: PageProps<
                                         <Badge variant="secondary">Draft</Badge>
                                     )}
                                 </TableCell>
-                                <TableCell className="text-muted-foreground">
+                                <TableCell className="hidden text-muted-foreground lg:table-cell">
                                     {formatDate(article.updated_at)}
                                 </TableCell>
                                 <TableCell>
@@ -62,7 +62,7 @@ export default async function DashboardArticlesPage({ searchParams }: PageProps<
                                             href={`/dashboard/articles/${article.id}/edit`}
                                             className={buttonVariants({ variant: "outline", size: "sm" })}
                                         >
-                                            <Pencil /> Edit
+                                            <Pencil /> <span className="sr-only sm:not-sr-only">Edit</span>
                                         </Link>
                                         <ConfirmAction
                                             action={deleteArticle.bind(null, article.id)}

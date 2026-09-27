@@ -24,21 +24,23 @@ export default async function UsersPage({ searchParams }: PageProps<"/dashboard/
                     <TableHeader>
                         <TableRow>
                             <TableHead>Username</TableHead>
-                            <TableHead>Email</TableHead>
+                            <TableHead className="hidden md:table-cell">Email</TableHead>
                             <TableHead>Role</TableHead>
-                            <TableHead>Joined</TableHead>
+                            <TableHead className="hidden lg:table-cell">Joined</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {users.items.map((user) => (
                             <TableRow key={user.id}>
-                                <TableCell className="font-medium">{user.username}</TableCell>
-                                <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                                <TableCell className="w-full max-w-0 truncate font-medium">{user.username}</TableCell>
+                                <TableCell className="hidden text-muted-foreground md:table-cell">{user.email}</TableCell>
                                 <TableCell>
                                     <Badge variant={user.role === "admin" ? "default" : "secondary"}>{user.role}</Badge>
                                 </TableCell>
-                                <TableCell className="text-muted-foreground">{formatDate(user.created_at)}</TableCell>
+                                <TableCell className="hidden text-muted-foreground lg:table-cell">
+                                    {formatDate(user.created_at)}
+                                </TableCell>
                                 <TableCell className="text-right">
                                     <RoleToggle userId={user.id} role={user.role} isSelf={user.id === me?.id} />
                                 </TableCell>

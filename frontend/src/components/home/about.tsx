@@ -22,7 +22,7 @@ const PILLARS = [
 /** "About me" section: biography and working principles. */
 export function About() {
     return (
-        <section id="about" className="mx-auto max-w-6xl scroll-mt-24 px-6 py-32">
+        <section id="about" className="mx-auto max-w-6xl scroll-mt-24 px-4 py-20 sm:px-6 sm:py-32">
             <SectionHeading eyebrow="About me" title="Building the web, one well-crafted layer at a time." />
             <div className="grid gap-12 lg:grid-cols-[1.2fr_1fr]">
                 <div className="space-y-6 text-lg leading-relaxed text-muted-foreground">

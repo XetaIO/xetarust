@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Logo } from "@/components/site/logo";
+import { MobileMenu } from "@/components/site/mobile-menu";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
@@ -67,11 +68,11 @@ export function HomeNav() {
         >
             <nav
                 className={cn(
-                    "flex items-center gap-1 rounded-full px-2 py-2 transition-all duration-500",
+                    "flex w-full items-center justify-between gap-1 rounded-full px-2 py-2 transition-all duration-500 sm:w-auto sm:justify-start",
                     scrolled ? "glass shadow-2xl shadow-brand-orange/10" : "border border-transparent",
                 )}
             >
-                <Link href="/" className="mr-2 rounded-full px-3 py-1.5 font-mono text-sm font-semibold">
+                <Link href="/" className="mr-2 rounded-full px-3 py-1.5 text-sm font-semibold">
                     <Logo />
                 </Link>
                 <div className="hidden items-center sm:flex">
@@ -99,12 +100,31 @@ export function HomeNav() {
                         );
                     })}
                 </div>
-                <Link
-                    href="/blog"
-                    className="ml-1 rounded-full bg-foreground px-4 py-1.5 text-sm font-medium text-background transition-transform hover:scale-105"
-                >
-                    Blog
-                </Link>
+                <div className="flex items-center gap-1">
+                    <Link
+                        href="/blog"
+                        className="ml-1 rounded-full bg-foreground px-4 py-1.5 text-sm font-medium text-background transition-transform hover:scale-105"
+                    >
+                        Blog
+                    </Link>
+                    <MobileMenu>
+                        {LINKS.map((link) => (
+                            <a
+                                key={link.id}
+                                href={`#${link.id}`}
+                                aria-current={link.id === active ? "location" : undefined}
+                                className={cn(
+                                    "rounded-xl px-4 py-3 text-sm transition-colors",
+                                    link.id === active
+                                        ? "bg-brand-orange/15 text-foreground ring-1 ring-brand-orange/30"
+                                        : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
+                                )}
+                            >
+                                {link.label}
+                            </a>
+                        ))}
+                    </MobileMenu>
+                </div>
             </nav>
         </motion.header>
     );

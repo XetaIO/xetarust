@@ -16,8 +16,8 @@ export function ArticleCard({ article }: { article: ArticleSummaryDto }) {
                 className="border-b border-white/5"
                 imageClassName="transition-transform duration-500 group-hover:scale-[1.03]"
             />
-            <div className="flex flex-1 flex-col p-6">
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="flex flex-1 flex-col p-5 sm:p-6">
+                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                     <Link
                         href={`/blog/category/${article.category.slug}`}
                         className="relative z-10 rounded-full bg-brand-orange/15 px-2.5 py-1 font-medium text-brand-orange hover:bg-brand-orange/25"
@@ -34,7 +34,7 @@ export function ArticleCard({ article }: { article: ArticleSummaryDto }) {
                     </Link>
                 </h2>
                 {article.excerpt && <p className="mt-2 line-clamp-3 text-muted-foreground">{article.excerpt}</p>}
-                <div className="mt-auto flex items-center gap-3 pt-6 text-xs text-muted-foreground">
+                <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-6 text-xs text-muted-foreground">
                     <span>by {article.author.username}</span>
                     <span className="inline-flex items-center gap-1">
                         <Clock className="size-3" /> {article.reading_time_minutes} min read

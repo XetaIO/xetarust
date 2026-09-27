@@ -29,12 +29,12 @@ export function Pagination({ page, totalPages, hrefFor }: PaginationProps) {
         );
 
     return (
-        <nav aria-label="Pagination" className="mt-10 flex items-center justify-center gap-4">
+        <nav aria-label="Pagination" className="mt-10 flex items-center justify-center gap-2 sm:gap-4">
             {link(
                 page - 1,
                 page <= 1,
                 <>
-                    <ChevronLeft /> Previous
+                    <ChevronLeft /> <span className="sr-only sm:not-sr-only">Previous</span>
                 </>,
             )}
             <span className="text-sm text-muted-foreground">
@@ -44,7 +44,7 @@ export function Pagination({ page, totalPages, hrefFor }: PaginationProps) {
                 page + 1,
                 page >= totalPages,
                 <>
-                    Next <ChevronRight />
+                    <span className="sr-only sm:not-sr-only">Next</span> <ChevronRight />
                 </>,
             )}
         </nav>

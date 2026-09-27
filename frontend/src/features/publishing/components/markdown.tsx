@@ -11,7 +11,7 @@ export async function Markdown({ source, className }: { source: string; classNam
     return (
         <div
             className={cn(
-                "prose prose-invert max-w-none prose-headings:tracking-tight prose-a:text-brand-orange prose-a:decoration-brand-orange/50 hover:prose-a:decoration-brand-orangeprose-pre:border prose-pre:border-white/10 prose-pre:bg-card prose-code:before:content-none prose-code:after:content-none",
+                "prose prose-sm prose-invert max-w-none sm:prose-base prose-headings:tracking-tight prose-a:break-words prose-a:text-brand-orange prose-a:decoration-brand-orange/50 hover:prose-a:decoration-brand-orange prose-pre:overflow-x-auto prose-pre:border prose-pre:border-white/10 prose-pre:bg-card prose-code:before:content-none prose-code:after:content-none prose-img:rounded-xl prose-table:block prose-table:overflow-x-auto",
                 className,
             )}
         >

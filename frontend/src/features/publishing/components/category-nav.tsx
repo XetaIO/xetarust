@@ -10,7 +10,7 @@ export function CategoryNav({ categories, active }: { categories: CategoryDto[];
             key={href}
             href={href}
             className={cn(
-                "rounded-full border px-4 py-1.5 text-sm transition-colors",
+                "shrink-0 rounded-full border px-4 py-1.5 text-sm whitespace-nowrap transition-colors",
                 isActive
                     ? "border-brand-orange bg-brand-orange/15 text-foreground"
                     : "border-white/10 text-muted-foreground hover:border-white/25 hover:text-foreground",
@@ -21,7 +21,7 @@ export function CategoryNav({ categories, active }: { categories: CategoryDto[];
     );
 
     return (
-        <nav aria-label="Categories" className="flex flex-wrap gap-2">
+        <nav aria-label="Categories" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
             {item("/blog", "All", !active)}
             {categories.map((category) =>
                 item(`/blog/category/${category.slug}`, category.name, category.slug === active),

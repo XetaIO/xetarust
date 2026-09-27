@@ -42,19 +42,19 @@ function ProjectCard({ project }: { project: Project }) {
             onMouseMove={handleMove}
             onMouseLeave={handleLeave}
             style={{ rotateX, rotateY, transformPerspective: 1000 }}
-            className="glass group relative flex h-full flex-col overflow-hidden rounded-3xl p-7"
+            className="glass group relative flex h-full flex-col overflow-hidden rounded-3xl p-5 sm:p-7"
         >
             <motion.div
                 aria-hidden
                 className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
                 style={{ background: glow }}
             />
-            <div className="relative flex items-start justify-between gap-4">
-                <div className="flex items-center gap-4">
+            <div className="relative flex flex-wrap items-start justify-between gap-3 sm:gap-4">
+                <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                     {project.logo && (
                         <div
                             className={cn(
-                                "relative shrink-0 overflow-hidden rounded-lg bg-white/3 shadow-lg shadow-black/20 ring-1 ring-white/10 transition-transform duration-300 group-hover:scale-105 size-14",
+                                "relative shrink-0 overflow-hidden rounded-lg bg-white/3 shadow-lg shadow-black/20 ring-1 ring-white/10 transition-transform duration-300 group-hover:scale-105 size-12 sm:size-14",
                             )}
                         >
                             <Image
@@ -66,7 +66,7 @@ function ProjectCard({ project }: { project: Project }) {
                             />
                         </div>
                     )}
-                    <h3 className={cn("font-semibold tracking-tight text-2xl")}>{project.name}</h3>
+                    <h3 className={cn("text-xl font-semibold tracking-tight sm:text-2xl")}>{project.name}</h3>
                 </div>
                 {project.status && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-1 text-xs text-muted-foreground">
@@ -80,16 +80,13 @@ function ProjectCard({ project }: { project: Project }) {
             <div className="relative mt-auto pt-6">
                 <ul className="flex flex-wrap gap-2">
                     {project.tech.map((tech) => (
-                        <li
-                            key={tech}
-                            className="rounded-md bg-white/5 px-2 py-1 font-mono text-xs text-muted-foreground"
-                        >
+                        <li key={tech} className="rounded-md bg-white/5 px-2 py-1 text-xs text-muted-foreground">
                             {tech}
                         </li>
                     ))}
                 </ul>
                 {project.links.length > 0 && (
-                    <div className="mt-5 flex gap-4">
+                    <div className="mt-5 flex flex-wrap gap-4">
                         {project.links.map((link) => (
                             <a
                                 key={link.href}
@@ -112,7 +109,7 @@ function ProjectCard({ project }: { project: Project }) {
 /** Projects section. */
 export function Projects() {
     return (
-        <section id="projects" className="mx-auto max-w-6xl scroll-mt-24 px-6 py-32">
+        <section id="projects" className="mx-auto max-w-6xl scroll-mt-24 px-4 py-20 sm:px-6 sm:py-32">
             <SectionHeading
                 eyebrow="Projects"
                 title="Things I've built."
