@@ -1,0 +1,128 @@
+# Continuous integration: lint and tests of the Rust API and the Next.js
+# frontend, on every push and every pull request.
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+# A new push on the same branch / PR cancels the run still in progress.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  backend-lint:
+    name: Backend · fmt & clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+
+  backend-test:
+    name: Backend · tests
+    runs-on: ubuntu-latest
+    services:
+      # Same database as the `postgres_test` service of docker-compose.yml.
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: xetaravel
+          POSTGRES_PASSWORD: xetaravel
+          POSTGRES_DB: xetaravel_test
+        ports:
+          - 5443:5432
+        options: >-
+          --health-cmd "pg_isready -U xetaravel"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL_TEST: postgres://xetaravel:xetaravel@localhost:5443/xetaravel_test
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      # Unit, persistence, HTTP and architecture tests.
+      - run: cargo test --workspace
+
+  frontend:
+    name: Frontend · lint, typecheck & build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
+
+  e2e:
+    name: E2E · Playwright
+    runs-on: ubuntu-latest
+    env:
+      # Captcha disabled (no TURNSTILE_SECRET / site key) and a rate limit out
+      # of reach: every e2e request comes from the same IP.
+      AUTH_RATE_LIMIT_BURST: "1000"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # docker compose keeps the `xetaravel_postgres` container name the e2e
+      # tests use to promote their admin.
+      - name: Start PostgreSQL
+        run: |
+          docker compose up -d postgres
+          # Over TCP: the temporary server of the first boot only listens on the socket.
+          until docker exec xetaravel_postgres pg_isready -h 127.0.0.1 -U xetaravel; do sleep 1; done
+      - name: Start the API
+        run: |
+          cp .env.example .env
+          cargo build -p xetaravel-app
+          nohup target/debug/xetaravel > api.log 2>&1 &
+          curl --retry 30 --retry-delay 2 --retry-connrefused --fail --silent http://127.0.0.1:8080/api/health
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Run Playwright
+        working-directory: frontend
+        run: npm run test:e2e
+
+      - name: Upload the report and the API logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: |
+            frontend/test-results
+            frontend/playwright-report
+            api.log
+          retention-days: 7
