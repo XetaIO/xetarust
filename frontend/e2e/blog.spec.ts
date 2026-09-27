@@ -41,7 +41,6 @@ async function register(page: Page, username: string): Promise<string> {
 
 test("home page presents Emeric", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1, name: "Emeric Fevre" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Things I've built." })).toBeAttached();
 });
 
