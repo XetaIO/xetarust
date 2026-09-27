@@ -60,7 +60,8 @@
             transform: translateX(0);
         }
         to {
-            transform: translateX(calc(-50% - 0.75rem));
+            /* One full track plus the gap between the two tracks (`gap-3`). */
+            transform: translateX(calc(-100% - 0.75rem));
         }
     }
 
@@ -129,7 +130,7 @@
         @apply scroll-smooth font-sans;
     }
     body {
-        @apply bg-background text-foreground;
+        @apply bg-background text-foreground font-mono;
     }
     ::selection {
         @apply bg-brand-orange/40 text-white;
@@ -137,19 +138,6 @@
 }
 
 @layer utilities {
-    /* Animated Laravel orange → amber → red gradient text. */
-    .text-gradient {
-        @apply bg-clip-text text-transparent animate-shine;
-        background-image: linear-gradient(
-            90deg,
-            var(--brand-orange),
-            var(--brand-amber),
-            var(--brand-red),
-            var(--brand-orange)
-        );
-        background-size: 200% auto;
-    }
-
     /* Faint grid used behind hero sections. */
     .bg-grid {
         background-image:

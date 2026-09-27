@@ -16,7 +16,7 @@ export default async function BlogPage({ searchParams }: PageProps<"/blog">) {
         <>
             <div className="mb-10">
                 <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
-                    The <span className="text-gradient">blog</span>
+                    The <span className="text-brand-orange">blog</span>
                 </h1>
                 <p className="mt-3 text-lg text-muted-foreground">
                     Notes on Rust, Laravel, architecture and everything I learn along the way.

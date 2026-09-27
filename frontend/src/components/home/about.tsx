@@ -6,9 +6,17 @@ import { Reveal } from "./reveal";
 import { SectionHeading } from "./section-heading";
 
 const PILLARS = [
-    { icon: Code2, title: "Clean code", text: "Readable, tested and documented code built on SOLID principles." },
-    { icon: ShieldCheck, title: "Reliability", text: "Automated tests and CI/CD pipelines on every project I ship." },
-    { icon: Rocket, title: "Performance", text: "Fast back-ends and smooth interfaces, from Laravel to Rust." },
+    {
+        icon: Code2,
+        title: "Clean code",
+        text: "Readable, tested and documented code built on SOLID principles, MVC & Hexagonal architectures.",
+    },
+    {
+        icon: ShieldCheck,
+        title: "Reliability",
+        text: "Automated tests and CI/CD pipelines on every project I ship, with strong linting.",
+    },
+    { icon: Rocket, title: "Performance", text: "Fast back-ends and smooth interfaces, with Laravel, React and Rust." },
 ];
 
 /** "About me" section: biography and working principles. */

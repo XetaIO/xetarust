@@ -27,7 +27,13 @@ export const metadata: Metadata = {
 /** Root layout: fonts, dark theme and toast notifications. */
 export default function RootLayout({ children }: LayoutProps<"/">) {
     return (
-        <html lang="en" className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+        <html
+            lang="en"
+            // Lets Next.js disable `scroll-smooth` during route transitions (otherwise
+            // the scroll reset animates and can end at the bottom of the home page).
+            data-scroll-behavior="smooth"
+            className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+        >
             <body className="flex min-h-full flex-col">
                 {children}
                 <Toaster theme="dark" position="bottom-right" richColors />

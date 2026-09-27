@@ -2,25 +2,61 @@
 
 import { motion, useMotionValueEvent, useScroll } from "motion/react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Logo } from "@/components/site/logo";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
-    { href: "#about", label: "About" },
-    { href: "#skills", label: "Skills" },
-    { href: "#experience", label: "Journey" },
-    { href: "#projects", label: "Projects" },
-    { href: "#contact", label: "Contact" },
+    { id: "about", label: "About" },
+    { id: "skills", label: "Skills" },
+    { id: "experience", label: "Journey" },
+    { id: "projects", label: "Projects" },
+    { id: "contact", label: "Contact" },
 ];
 
-/** Floating navigation bar that turns into a glass pill once the page scrolls. */
+/** Fraction of the viewport height a section's top must cross to become the active one. */
+const ACTIVATION_LINE = 0.4;
+
+/**
+ * Returns the id of the section currently being read: the last one whose top crossed
+ * the activation line, or the last section once the page is scrolled to the bottom.
+ */
+function findActiveSection(): string | null {
+    const { innerHeight, scrollY } = window;
+    if (innerHeight + scrollY >= document.documentElement.scrollHeight - 2) {
+        return LINKS[LINKS.length - 1].id;
+    }
+
+    let active: string | null = null;
+    for (const { id } of LINKS) {
+        const section = document.getElementById(id);
+        if (section && section.getBoundingClientRect().top <= innerHeight * ACTIVATION_LINE) {
+            active = id;
+        }
+    }
+    return active;
+}
+
+/**
+ * Floating navigation bar that turns into a glass pill once the page scrolls and
+ * highlights the link of the section being read (scroll spy).
+ */
 export function HomeNav() {
     const { scrollY } = useScroll();
     const [scrolled, setScrolled] = useState(false);
+    const [active, setActive] = useState<string | null>(null);
 
-    useMotionValueEvent(scrollY, "change", (y) => setScrolled(y > 24));
+    useMotionValueEvent(scrollY, "change", (y) => {
+        setScrolled(y > 24);
+        setActive(findActiveSection());
+    });
+
+    // Sync once after the first layout, e.g. when the page is reloaded mid-scroll or opened on an anchor.
+    useEffect(() => {
+        const frame = requestAnimationFrame(() => setActive(findActiveSection()));
+        return () => cancelAnimationFrame(frame);
+    }, []);
 
     return (
         <motion.header
@@ -39,15 +75,29 @@ export function HomeNav() {
                     <Logo />
                 </Link>
                 <div className="hidden items-center sm:flex">
-                    {LINKS.map((link) => (
-                        <a
-                            key={link.href}
-                            href={link.href}
-                            className="rounded-full px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
-                        >
-                            {link.label}
-                        </a>
-                    ))}
+                    {LINKS.map((link) => {
+                        const isActive = link.id === active;
+                        return (
+                            <a
+                                key={link.id}
+                                href={`#${link.id}`}
+                                aria-current={isActive ? "location" : undefined}
+                                className={cn(
+                                    "relative rounded-full px-3 py-1.5 text-sm transition-colors hover:text-foreground",
+                                    isActive ? "text-foreground" : "text-muted-foreground hover:bg-white/5",
+                                )}
+                            >
+                                {isActive && (
+                                    <motion.span
+                                        layoutId="home-nav-active"
+                                        className="absolute inset-0 rounded-full bg-brand-orange/15 ring-1 ring-brand-orange/30"
+                                        transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                                    />
+                                )}
+                                <span className="relative">{link.label}</span>
+                            </a>
+                        );
+                    })}
                 </div>
                 <Link
                     href="/blog"

@@ -25,6 +25,7 @@ export function ArticleCover({ name, alt, sizes, className, imageClassName }: Ar
                     fill
                     sizes={sizes}
                     className={cn("object-cover", imageClassName)}
+                    loading="eager"
                 />
             ) : (
                 <div

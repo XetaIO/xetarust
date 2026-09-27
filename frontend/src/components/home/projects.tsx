@@ -2,6 +2,7 @@
 
 import { ArrowUpRight, Lock } from "lucide-react";
 import { motion, useMotionTemplate, useMotionValue, useSpring, useTransform } from "motion/react";
+import Image from "next/image";
 import type { MouseEvent } from "react";
 
 import { type Project, profile } from "@/content/profile";
@@ -11,7 +12,7 @@ import { Reveal } from "./reveal";
 import { SectionHeading } from "./section-heading";
 
 /** Maximum tilt angle of a card, in degrees. */
-const MAX_TILT = 8;
+const MAX_TILT = 6;
 
 /** Project card tilting in 3D and glowing under the cursor. */
 function ProjectCard({ project }: { project: Project }) {
@@ -49,9 +50,24 @@ function ProjectCard({ project }: { project: Project }) {
                 style={{ background: glow }}
             />
             <div className="relative flex items-start justify-between gap-4">
-                <h3 className={cn("font-semibold tracking-tight", project.featured ? "text-3xl" : "text-xl")}>
-                    {project.name}
-                </h3>
+                <div className="flex items-center gap-4">
+                    {project.logo && (
+                        <div
+                            className={cn(
+                                "relative shrink-0 overflow-hidden rounded-lg bg-white/3 shadow-lg shadow-black/20 ring-1 ring-white/10 transition-transform duration-300 group-hover:scale-105 size-14",
+                            )}
+                        >
+                            <Image
+                                src={project.logo}
+                                alt={`${project.name} logo`}
+                                fill
+                                sizes="56px"
+                                className="object-contain p-1.5"
+                            />
+                        </div>
+                    )}
+                    <h3 className={cn("font-semibold tracking-tight text-2xl")}>{project.name}</h3>
+                </div>
                 {project.status && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-1 text-xs text-muted-foreground">
                         <Lock className="size-3" /> Private
@@ -80,7 +96,7 @@ function ProjectCard({ project }: { project: Project }) {
                                 href={link.href}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-sm font-medium text-brand-amber hover:underline"
+                                className="inline-flex items-center gap-1 text-sm font-medium text-brand-orange hover:underline"
                             >
                                 {link.label}
                                 <ArrowUpRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
@@ -93,7 +109,7 @@ function ProjectCard({ project }: { project: Project }) {
     );
 }
 
-/** Projects section rendered as a bento grid. */
+/** Projects section. */
 export function Projects() {
     return (
         <section id="projects" className="mx-auto max-w-6xl scroll-mt-24 px-6 py-32">
@@ -104,11 +120,7 @@ export function Projects() {
             />
             <div className="grid auto-rows-fr gap-5 md:grid-cols-6">
                 {profile.projects.map((project, index) => (
-                    <Reveal
-                        key={project.name}
-                        delay={index * 0.08}
-                        className={project.featured ? "md:col-span-3" : "md:col-span-2"}
-                    >
+                    <Reveal key={project.name} delay={index * 0.08} className="md:col-span-3">
                         <ProjectCard project={project} />
                     </Reveal>
                 ))}
