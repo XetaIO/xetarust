@@ -1,8 +1,9 @@
 # Rust
 /target
 
-# Uploaded files (UPLOADS_DIR)
-storage/
+# Uploaded files (UPLOADS_DIR, relative to the repository root). Anchored so
+# source folders named `storage` (e.g. publishing/infrastructure/storage) stay tracked.
+/storage/
 
 # Environment
 .env
