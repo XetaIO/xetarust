@@ -41,14 +41,12 @@ async function authorizationHeader(): Promise<Record<string, string>> {
 }
 
 /**
- * Calls the Rust API from the Next.js server and returns the parsed JSON.
- * The JWT never reaches the browser: it is read from the httpOnly cookie here.
- *
- * @throws {ApiError} when the API answers with a non-2xx status.
+ * Builds the `fetch` init of an API call: method, JSON body, JWT (when
+ * `auth`) and visitor IP headers. Responses are never cached by Next.js.
  */
-export async function apiFetch<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
+async function requestInit(options: ApiRequestOptions, accept: string): Promise<RequestInit> {
   const headers: Record<string, string> = {
-    Accept: "application/json",
+    Accept: accept,
     ...(options.auth ? await authorizationHeader() : {}),
   };
   if (options.body !== undefined) {
@@ -58,12 +56,22 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
     headers["X-Forwarded-For"] = options.clientIp;
   }
 
-  const response = await fetch(buildUrl(path, options.query), {
+  return {
     method: options.method ?? "GET",
     headers,
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
     cache: "no-store",
-  });
+  };
+}
+
+/**
+ * Calls the Rust API from the Next.js server and returns the parsed JSON.
+ * The JWT never reaches the browser: it is read from the httpOnly cookie here.
+ *
+ * @throws {ApiError} when the API answers with a non-2xx status.
+ */
+export async function apiFetch<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
+  const response = await fetch(buildUrl(path, options.query), await requestInit(options, "application/json"));
 
   if (response.status === 204) {
     return undefined as T;
@@ -102,15 +110,25 @@ export async function apiUpload<T>(path: string, file: Blob): Promise<T> {
 }
 
 /** Response headers of the API relayed as-is by {@link apiProxy}. */
-const PROXIED_HEADERS = ["Content-Type", "Cache-Control", "Content-Length"];
+const PROXIED_HEADERS = [
+  "Content-Type",
+  "Cache-Control",
+  "Content-Length",
+  "Content-Disposition",
+  "X-Content-Type-Options",
+];
+
+/** Options of {@link apiProxy}: the proxied routes are public (no JWT). */
+export type ApiProxyOptions = Pick<ApiRequestOptions, "method" | "body" | "clientIp">;
 
 /**
- * Relays a public, non-JSON API response (e.g. an image) to the browser:
- * same status, body and caching headers. Used by route handlers so the
- * browser never talks to the Rust API directly.
+ * Relays a public, non-JSON API response (e.g. an image, the CV) to the
+ * browser: same status, body and content headers. JSON errors are relayed
+ * unchanged. Used by route handlers so the browser never talks to the Rust
+ * API directly.
  */
-export async function apiProxy(path: string): Promise<Response> {
-  const response = await fetch(buildUrl(path, undefined), { cache: "no-store" });
+export async function apiProxy(path: string, options: ApiProxyOptions = {}): Promise<Response> {
+  const response = await fetch(buildUrl(path, undefined), await requestInit(options, "*/*"));
   const headers = new Headers();
   for (const name of PROXIED_HEADERS) {
     const value = response.headers.get(name);

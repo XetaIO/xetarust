@@ -1,4 +1,4 @@
-//! End-to-end HTTP tests: real router, the three bounded contexts wired by
+//! End-to-end HTTP tests: real router, the four bounded contexts wired by
 //! the composition root, PostgreSQL test database. The HTTP contract (routes,
 //! JSON) is the one the frontend relies on.
 //!
@@ -803,4 +803,53 @@ async fn cover_uploads_are_validated() {
         )
         .await;
     assert_eq!(status, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn humans_download_the_resume() {
+    let app = TestApp::start().await;
+
+    let (status, headers, bytes) = app
+        .call_json_raw(
+            Method::POST,
+            "/api/cv",
+            json!({ "captcha_token": CAPTCHA_TOKEN }),
+        )
+        .await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(headers[header::CONTENT_TYPE], "application/pdf");
+    assert_eq!(
+        headers[header::CONTENT_DISPOSITION],
+        "attachment; filename=\"CV_Emeric_Fevre.pdf\""
+    );
+    assert_eq!(headers[header::X_CONTENT_TYPE_OPTIONS], "nosniff");
+    assert_eq!(headers[header::CACHE_CONTROL], "private, no-store");
+    assert!(bytes.starts_with(b"%PDF"));
+}
+
+#[tokio::test]
+async fn resume_download_requires_a_solved_captcha() {
+    let app = TestApp::start().await;
+
+    let (status, body) = app
+        .call(Method::POST, "/api/cv", None, Some(json!({})))
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(body["error"], "validation_error");
+    assert!(body["fields"]["captcha_token"].is_array());
+
+    let (status, body) = app
+        .call(
+            Method::POST,
+            "/api/cv",
+            None,
+            Some(json!({ "captcha_token": "forged" })),
+        )
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(body["fields"]["captcha_token"].is_array());
+
+    let (status, _) = app.call(Method::GET, "/api/cv", None, None).await;
+    assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
 }

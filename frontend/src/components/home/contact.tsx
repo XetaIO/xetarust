@@ -1,8 +1,9 @@
-import { ArrowUpRight, Download, type LucideIcon, Mail } from "lucide-react";
+import { ArrowUpRight, type LucideIcon, Mail } from "lucide-react";
 
 import { GithubIcon, LinkedinIcon, TwitterIcon } from "@/components/icons/brand-icons";
 import { profile, type SocialIcon } from "@/content/profile";
 
+import { CvDownload } from "./cv-download";
 import { Reveal } from "./reveal";
 
 /** Icon shown in front of each social link. */
@@ -37,12 +38,7 @@ export function Contact() {
                             >
                                 <Mail className="size-4 shrink-0" /> <span className="truncate">{profile.email}</span>
                             </a>
-                            <a
-                                href={profile.cv}
-                                className="glass inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-medium transition-colors hover:bg-white/10"
-                            >
-                                <Download className="size-4" /> Download my CV
-                            </a>
+                            <CvDownload />
                         </div>
                         <ul className="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm sm:mt-10 text-muted-foreground">
                             {profile.socials.map((social) => {

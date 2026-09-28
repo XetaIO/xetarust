@@ -4378,6 +4378,7 @@ dependencies = [
  "xetaravel-identity",
  "xetaravel-kernel",
  "xetaravel-publishing",
+ "xetaravel-resume",
 ]
 
 [[package]]
@@ -4458,6 +4459,20 @@ dependencies = [
  "tracing",
  "ts-rs",
  "uuid",
+ "validator",
+ "xetaravel-kernel",
+]
+
+[[package]]
+name = "xetaravel-resume"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "mockall",
+ "serde",
+ "tokio",
+ "ts-rs",
  "validator",
  "xetaravel-kernel",
 ]

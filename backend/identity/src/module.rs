@@ -6,11 +6,11 @@ use std::sync::Arc;
 use sea_orm::DatabaseConnection;
 use xetaravel_kernel::{Clock, PrincipalResolver};
 
-use crate::application::contract::IdentityDirectory;
+use crate::application::contract::{HumanCheck, IdentityDirectory};
 use crate::application::ports::{HumanVerifier, PasswordHasher, TokenService};
 use crate::application::use_cases::{
-    Authenticate, BanUser, ChangeUserRole, GetCurrentUser, GetIdentitySettings, GetPublicProfiles,
-    ListUsers, LoginUser, RegisterUser, UnbanUser, UpdateIdentitySettings,
+    Authenticate, BanUser, ChangeUserRole, CheckHuman, GetCurrentUser, GetIdentitySettings,
+    GetPublicProfiles, ListUsers, LoginUser, RegisterUser, UnbanUser, UpdateIdentitySettings,
 };
 use crate::domain::{SettingsRepository, UserRepository};
 use crate::infrastructure::persistence::{SeaOrmSettingsRepository, SeaOrmUserRepository};
@@ -20,7 +20,7 @@ use crate::infrastructure::security::{
 
 /// Every use case of the Identity context, ready to be shared by the HTTP
 /// adapter and the other contexts (through [`Self::principals`]
-/// and [`Self::directory`]).
+/// [`Self::directory`] and [`Self::human_check`]).
 pub struct IdentityModule {
     pub register: RegisterUser,
     pub login: LoginUser,
@@ -33,6 +33,7 @@ pub struct IdentityModule {
     pub update_identity_settings: UpdateIdentitySettings,
     authenticate: Arc<Authenticate>,
     public_profiles: Arc<GetPublicProfiles>,
+    check_human: Arc<CheckHuman>,
 }
 
 impl IdentityModule {
@@ -62,7 +63,7 @@ impl IdentityModule {
                 humans.clone(),
                 clock.clone(),
             ),
-            login: LoginUser::new(users.clone(), hasher, tokens.clone(), humans),
+            login: LoginUser::new(users.clone(), hasher, tokens.clone(), humans.clone()),
             current_user: GetCurrentUser::new(users.clone()),
             list_users: ListUsers::new(users.clone()),
             change_user_role: ChangeUserRole::new(users.clone(), clock.clone()),
@@ -72,6 +73,7 @@ impl IdentityModule {
             update_identity_settings: UpdateIdentitySettings::new(settings, clock),
             authenticate: Arc::new(Authenticate::new(users.clone(), tokens)),
             public_profiles: Arc::new(GetPublicProfiles::new(users)),
+            check_human: Arc::new(CheckHuman::new(humans)),
         }
     }
 
@@ -83,5 +85,10 @@ impl IdentityModule {
     /// Returns the public directory other contexts use to name authors.
     pub fn directory(&self) -> Arc<dyn IdentityDirectory> {
         self.public_profiles.clone()
+    }
+
+    /// Returns the captcha check other contexts use to tell humans from bots.
+    pub fn human_check(&self) -> Arc<dyn HumanCheck> {
+        self.check_human.clone()
     }
 }

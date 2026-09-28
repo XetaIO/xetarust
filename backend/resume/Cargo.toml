@@ -1,0 +1,19 @@
+[package]
+name = "xetaravel-resume"
+description = "Resume bounded context of Xetaravel: download of the resume, reserved to humans."
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+xetaravel-kernel = { workspace = true, features = ["http"] }
+async-trait.workspace = true
+axum.workspace = true
+serde.workspace = true
+ts-rs.workspace = true
+validator.workspace = true
+
+[dev-dependencies]
+mockall.workspace = true
+tokio.workspace = true

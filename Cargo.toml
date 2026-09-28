@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["backend/kernel", "backend/identity", "backend/publishing", "backend/discussion", "backend/migration", "backend/app"]
+members = ["backend/kernel", "backend/identity", "backend/publishing", "backend/discussion", "backend/resume", "backend/migration", "backend/app"]
 
 [workspace.package]
 version = "0.1.0"
@@ -14,6 +14,7 @@ xetaravel-kernel = { path = "backend/kernel" }
 xetaravel-identity = { path = "backend/identity" }
 xetaravel-publishing = { path = "backend/publishing" }
 xetaravel-discussion = { path = "backend/discussion" }
+xetaravel-resume = { path = "backend/resume" }
 migration = { path = "backend/migration" }
 
 # Async runtime & web

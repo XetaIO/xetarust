@@ -5,6 +5,7 @@
 mod authenticate;
 mod ban_user;
 mod change_user_role;
+mod check_human;
 mod get_current_user;
 mod get_identity_settings;
 mod get_public_profiles;
@@ -17,6 +18,7 @@ mod update_identity_settings;
 pub use authenticate::Authenticate;
 pub use ban_user::BanUser;
 pub use change_user_role::ChangeUserRole;
+pub use check_human::CheckHuman;
 pub use get_current_user::GetCurrentUser;
 pub use get_identity_settings::GetIdentitySettings;
 pub use get_public_profiles::GetPublicProfiles;

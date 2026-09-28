@@ -5,7 +5,7 @@ Site perso d'Emeric Fevre : API Rust domain-first (`backend/`) + frontend Next.j
 **Avant toute modification, charger le skill `xetaravel-architecture`** (`.claude/skills/xetaravel-architecture/SKILL.md`) : architecture, workflow TDD, conventions et commandes.
 
 Rappels essentiels :
-- Trois bounded contexts, un crate chacun : `identity`, `publishing`, `discussion`. Ils dépendent **uniquement** de `kernel`, jamais les uns des autres ; seul `app` (composition root + ACL) les connaît tous. Vérifié par `backend/app/tests/architecture.rs`.
+- Quatre bounded contexts, un crate chacun : `identity`, `publishing`, `discussion`, `resume` (CV, sans base). Ils dépendent **uniquement** de `kernel`, jamais les uns des autres ; seul `app` (composition root + ACL) les connaît tous. Vérifié par `backend/app/tests/architecture.rs`.
 - Dans chaque contexte : `domain` ← `application` ← `infrastructure` / `http` ; le domaine n'utilise aucun framework.
 - Besoin inter-contextes = port dans le consommateur + contrat dans le fournisseur + adapter dans `backend/app/src/integration/`.
 - TDD : test d'abord, à chaque couche.

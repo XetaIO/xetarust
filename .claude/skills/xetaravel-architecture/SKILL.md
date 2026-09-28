@@ -1,6 +1,6 @@
 ---
 name: xetaravel-architecture
-description: Architecture, conventions et workflow de développement du projet Xetaravel (site perso d'Emeric Fevre) — backend Rust domain-first (3 bounded contexts hexagonaux Identity / Publishing / Discussion, Axum, SeaORM, PostgreSQL, JWT) + frontend Next.js 16 organisé par feature. À charger AVANT toute modification du code de ce dépôt (backend/ ou frontend/), pour ajouter une fonctionnalité, un endpoint, une migration, une page, ou écrire des tests.
+description: Architecture, conventions et workflow de développement du projet Xetaravel (site perso d'Emeric Fevre) — backend Rust domain-first (4 bounded contexts hexagonaux Identity / Publishing / Discussion / Resume, Axum, SeaORM, PostgreSQL, JWT) + frontend Next.js 16 organisé par feature. À charger AVANT toute modification du code de ce dépôt (backend/ ou frontend/), pour ajouter une fonctionnalité, un endpoint, une migration, une page, ou écrire des tests.
 ---
 
 # Xetaravel — architecture & manière de développer
@@ -22,7 +22,7 @@ Site personnel d'Emeric Fevre (Xety) :
 
 ## 2. Architecture domain-first (backend)
 
-Le backend est découpé en **trois bounded contexts**, un crate chacun ; l'hexagone
+Le backend est découpé en **quatre bounded contexts**, un crate chacun ; l'hexagone
 (domain → application → infrastructure / http) vit **à l'intérieur** de chaque contexte.
 
 | Contexte   | Crate                                         | Responsabilité                           | Concepts possédés                                                                    |
@@ -30,6 +30,7 @@ Le backend est découpé en **trois bounded contexts**, un crate chacun ; l'hexa
 | Identity   | `backend/identity` (`xetaravel-identity`)     | Identité, authentification, autorisation | `User`, `UserId`, `Email`, `Username`, `PasswordHash`, `Role`, `Ban`, `IdentitySettings`  |
 | Publishing | `backend/publishing` (`xetaravel-publishing`) | Création et publication du contenu       | `Article`, `ArticleDraft`, `Category`, `ArticleId`, `CategoryId`, `AuthorId`, `Slug` |
 | Discussion | `backend/discussion` (`xetaravel-discussion`) | Interactions autour du contenu           | `Comment`, `CommentId`, `CommentableArticle`, `ArticleId` et `AuthorId` **locaux**   |
+| Resume     | `backend/resume` (`xetaravel-resume`)         | Téléchargement du CV, réservé aux humains | `ResumeFile`, `ResumeStore` (PDF embarqué par `include_bytes!`, aucune table)        |
 
 ```
 backend/
@@ -37,6 +38,7 @@ backend/
 ├── identity/    xetaravel-identity
 ├── publishing/  xetaravel-publishing
 ├── discussion/  xetaravel-discussion
+├── resume/      xetaravel-resume      (sans base : le CV est dans resume/assets/, embarqué dans le binaire)
 ├── migration/   migration             agrège les migrations des contextes (identity → publishing → discussion)
 └── app/         xetaravel-app         composition root + ACL + router (binaire `xetaravel`)
 ```
@@ -55,7 +57,7 @@ Structure identique dans chaque contexte :
 
 **Règles de dépendance (vérifiées par `backend/app/tests/architecture.rs`)** :
 
-- `identity`, `publishing`, `discussion` dépendent **seulement** de `kernel` — jamais les uns des autres, ni de `app`/`migration` (hors dev-dependencies).
+- `identity`, `publishing`, `discussion`, `resume` dépendent **seulement** de `kernel` — jamais les uns des autres, ni de `app`/`migration` (hors dev-dependencies).
 - `kernel` ne dépend d'aucun contexte.
 - Dans un contexte : `domain/**` n'importe ni `sea_orm`, `axum`, `serde`, `ts_rs`, ni `crate::application|infrastructure|http` ; `application/**` n'importe ni `sea_orm` ni `axum`.
 - Seul `app` dépend de tous les contextes.
@@ -69,14 +71,15 @@ Un contexte **déclare ce dont il a besoin** (port sortant dans `application/por
 | `publishing::AuthorDirectory`, `discussion::AuthorDirectory` (noms d'auteurs) | `identity::IdentityDirectory` (use case `GetPublicProfiles`)      | `IdentityAuthorDirectory`      |
 | `discussion::ArticleCatalog` (article publié ?)                               | `publishing::PublishedArticles` (use case `FindPublishedArticle`) | `PublishingArticleCatalog`     |
 | `kernel::PrincipalResolver` (token → `Principal`)                             | use case `identity::Authenticate`                                 | `IdentityModule::principals()` |
+| `resume::HumanVerifier` (captcha résolu ?)                                    | `identity::HumanCheck` (use case `CheckHuman`)                    | `IdentityHumanVerifier`        |
 
 - Les autres contextes ne voient **jamais** `User` : ils manipulent un `Principal { user_id, is_admin }` (kernel) et leurs propres ids (`AuthorId`, `ArticleId`).
 - Les vues composites (article + catégorie + nom d'auteur) sont construites **dans l'application** (`publishing/src/application/views.rs`) : le repository joint uniquement ce que le contexte possède (catégories) ; les auteurs viennent du port, en **un seul appel par lot** (pas de N+1). Auteur inconnu → nom `"unknown"`.
-- `AppState` (`app/src/state.rs`) contient `identity`, `publishing`, `discussion`, `principals` avec `#[derive(FromRef)]` ; chaque router de contexte est générique sur l'état (`Arc<XxxModule>: FromRef<S>`).
+- `AppState` (`app/src/state.rs`) contient `identity`, `publishing`, `discussion`, `resume`, `principals` avec `#[derive(FromRef)]` ; chaque router de contexte est générique sur l'état (`Arc<XxxModule>: FromRef<S>`).
 
 ### Base de données
 
-- Une seule base PostgreSQL ; **chaque contexte possède ses tables et ses migrations** (`<contexte>/src/infrastructure/migrations/`, `pub fn migrations()`), nommées `mYYYYMMDD_<contexte>_NNNNNN_<action>`.
+- Une seule base PostgreSQL ; **chaque contexte possède ses tables et ses migrations** (`<contexte>/src/infrastructure/migrations/`, `pub fn migrations()`), nommées `mYYYYMMDD_<contexte>_NNNNNN_<action>`. `resume` ne possède aucune table (absent de `backend/migration`).
 - `backend/migration` concatène `identity::migrations()` + `publishing::migrations()` + `discussion::migrations()` (dans cet ordre).
 - **Compromis assumé** : les FKs inter-contextes sont conservées (`articles.author_id → users`, `comments.article_id → articles ON DELETE CASCADE`, `comments.author_id → users`) pour garantir l'intégrité. Dans les migrations, une table d'un autre contexte est référencée par son nom (`Alias::new("users")`), jamais par import.
 

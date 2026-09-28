@@ -121,6 +121,29 @@ impl TestApp {
         (status, headers, bytes)
     }
 
+    /// Sends a JSON `body` from a unique client IP and returns the status,
+    /// headers and raw body bytes (for binary responses such as the resume).
+    pub async fn call_json_raw(
+        &self,
+        method: Method,
+        uri: &str,
+        body: Value,
+    ) -> (StatusCode, HeaderMap, Bytes) {
+        let request = Request::builder()
+            .method(method)
+            .uri(uri)
+            .header("x-forwarded-for", unique_ip().to_string())
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(body.to_string()))
+            .unwrap();
+
+        let response = self.router.clone().oneshot(request).await.unwrap();
+        let status = response.status();
+        let headers = response.headers().clone();
+        let bytes = response.into_body().collect().await.unwrap().to_bytes();
+        (status, headers, bytes)
+    }
+
     /// Tells whether the cover file `name` exists in the uploads directory.
     pub fn cover_file_exists(&self, name: &str) -> bool {
         self.uploads.path().join("covers").join(name).is_file()

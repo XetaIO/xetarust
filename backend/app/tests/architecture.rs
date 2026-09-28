@@ -1,6 +1,6 @@
 //! Architecture guards of the domain-first layout.
 //!
-//! - Bounded contexts (Identity, Publishing, Discussion) depend on the shared
+//! - Bounded contexts (Identity, Publishing, Discussion, Resume) depend on the shared
 //!   kernel only, never on each other nor on the composition root (Cargo).
 //! - Inside a context, `domain` is framework-free and knows no outer layer,
 //!   and `application` knows neither SQL nor HTTP (source scan).
@@ -12,10 +12,11 @@ use std::process::Command;
 use serde_json::Value;
 
 /// Package names of the bounded contexts, with their source directory.
-const CONTEXTS: [(&str, &str); 3] = [
+const CONTEXTS: [(&str, &str); 4] = [
     ("xetaravel-identity", "identity"),
     ("xetaravel-publishing", "publishing"),
     ("xetaravel-discussion", "discussion"),
+    ("xetaravel-resume", "resume"),
 ];
 
 /// Internal packages a context must never depend on (besides the other contexts).

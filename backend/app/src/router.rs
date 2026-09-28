@@ -14,9 +14,11 @@ use crate::config::RateLimitSettings;
 use crate::state::AppState;
 
 /// Builds the full API router. The credential routes of Identity (login,
-/// register) are rate limited per client IP; the other routes are not.
+/// register) and the resume download are rate limited per client IP; the
+/// other routes are not.
 pub fn router(state: AppState) -> Router {
     let auth = rate_limited(xetaravel_identity::auth_router(), state.auth_rate_limit);
+    let resume = rate_limited(xetaravel_resume::router(), state.auth_rate_limit);
 
     Router::new()
         .route("/api/health", get(health))
@@ -24,6 +26,7 @@ pub fn router(state: AppState) -> Router {
         .merge(xetaravel_identity::account_router())
         .merge(xetaravel_publishing::router())
         .merge(xetaravel_discussion::router())
+        .merge(resume)
         .with_state(state)
 }
 

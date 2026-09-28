@@ -44,8 +44,10 @@ impl Default for RateLimitSettings {
 pub struct Config {
     pub database_url: String,
     pub jwt: JwtSettings,
-    /// Captcha of the credential routes (mandatory `TURNSTILE_SECRET`).
+    /// Captcha of the credential routes and of the resume download
+    /// (mandatory `TURNSTILE_SECRET`).
     pub captcha: CaptchaSettings,
+    /// Per-IP rate limit of the credential routes and of the resume download.
     pub auth_rate_limit: RateLimitSettings,
     /// Anti-flood policy of the members' comments.
     pub comment_throttle: CommentThrottle,

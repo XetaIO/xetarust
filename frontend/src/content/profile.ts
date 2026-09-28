@@ -39,7 +39,6 @@ export const profile = {
     "Self-taught full-stack developer crafting web applications for 10+ years — from robust back-ends to polished interfaces.",
   location: "St Marcel, France",
   email: "emeric@xetaravel.com",
-  cv: "./files/CV_Emeric_Fevre.pdf",
   about: [
     "I'm a full-stack web application developer and designer, self-taught for more than ten years. I'm mostly back-end oriented — I've spent years building with PHP frameworks like Laravel and CakePHP — while staying at ease with JavaScript/TypeScript and modern front-end tooling like React and Vue - while styling with TailwindCSS, Bootstrap, LESS & SASS.",
     "I care about clean architecture, tests and automation: unit testing, Git workflows, CI/CD and DevOps are part of every project I ship. Today I'm exploring Rust to build fast and reliable back-ends — this very site runs on it with Axum, Tokio & SeaORM.",
