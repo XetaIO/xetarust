@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 use chrono::Duration;
 use thiserror::Error;
+use xetaravel_discussion::CommentThrottle;
 use xetaravel_identity::{CaptchaSettings, JwtSettings, TURNSTILE_SITEVERIFY_URL};
 
 /// Minimum length of the JWT secret, in bytes.
@@ -46,6 +47,8 @@ pub struct Config {
     /// Captcha of the credential routes (mandatory `TURNSTILE_SECRET`).
     pub captcha: CaptchaSettings,
     pub auth_rate_limit: RateLimitSettings,
+    /// Anti-flood policy of the members' comments.
+    pub comment_throttle: CommentThrottle,
     pub app_addr: String,
     pub cors_origin: String,
     /// Root directory of the uploaded files (cover images...).
@@ -80,6 +83,7 @@ impl Config {
 
         let ttl_seconds = positive(&lookup, "JWT_TTL_SECONDS")?.unwrap_or(7 * 24 * 3600);
         let defaults = RateLimitSettings::default();
+        let throttle = CommentThrottle::default();
 
         Ok(Self {
             database_url: required("DATABASE_URL")?,
@@ -95,6 +99,12 @@ impl Config {
                 burst: positive(&lookup, "AUTH_RATE_LIMIT_BURST")?.unwrap_or(defaults.burst),
                 period_seconds: positive(&lookup, "AUTH_RATE_LIMIT_PERIOD_SECONDS")?
                     .unwrap_or(defaults.period_seconds),
+            },
+            comment_throttle: CommentThrottle {
+                double_post_window: positive(&lookup, "COMMENT_DOUBLE_POST_HOURS")?
+                    .map_or(throttle.double_post_window, Duration::hours),
+                cooldown: positive(&lookup, "COMMENT_COOLDOWN_MINUTES")?
+                    .map_or(throttle.cooldown, Duration::minutes),
             },
             app_addr: lookup("APP_ADDR").unwrap_or_else(|| "127.0.0.1:8080".into()),
             cors_origin: lookup("CORS_ORIGIN").unwrap_or_else(|| "http://localhost:3000".into()),
@@ -185,6 +195,7 @@ mod tests {
                 period_seconds: 12
             }
         );
+        assert_eq!(config.comment_throttle, CommentThrottle::default());
     }
 
     #[test]
@@ -199,6 +210,22 @@ mod tests {
             RateLimitSettings {
                 burst: 10,
                 period_seconds: 30
+            }
+        );
+    }
+
+    #[test]
+    fn reads_the_comment_throttle() {
+        let config = Config::from_lookup(with_base(&[
+            ("COMMENT_DOUBLE_POST_HOURS", "24"),
+            ("COMMENT_COOLDOWN_MINUTES", "1"),
+        ]))
+        .unwrap();
+        assert_eq!(
+            config.comment_throttle,
+            CommentThrottle {
+                double_post_window: Duration::hours(24),
+                cooldown: Duration::minutes(1),
             }
         );
     }
@@ -240,7 +267,12 @@ mod tests {
             Config::from_lookup(with_base(&[("JWT_TTL_SECONDS", "-1")])),
             Err(ConfigError::Invalid("JWT_TTL_SECONDS", _))
         ));
-        for key in ["AUTH_RATE_LIMIT_BURST", "AUTH_RATE_LIMIT_PERIOD_SECONDS"] {
+        for key in [
+            "AUTH_RATE_LIMIT_BURST",
+            "AUTH_RATE_LIMIT_PERIOD_SECONDS",
+            "COMMENT_DOUBLE_POST_HOURS",
+            "COMMENT_COOLDOWN_MINUTES",
+        ] {
             for value in ["0", "-3", "abc"] {
                 assert_eq!(
                     Config::from_lookup(with_base(&[(key, value)])).unwrap_err(),

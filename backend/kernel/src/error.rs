@@ -34,6 +34,10 @@ pub enum DomainError {
     #[error("{0}")]
     Forbidden(String),
 
+    /// The actor must wait before performing the operation again (anti-flood).
+    #[error("{0}")]
+    TooManyRequests(String),
+
     /// A storage adapter failed (connection lost, unexpected SQL error...).
     #[error("repository failure: {0}")]
     Repository(String),
@@ -102,6 +106,7 @@ impl From<DomainError> for AppError {
             DomainError::NotFound(resource) => Self::NotFound(format!("{resource} not found")),
             DomainError::Conflict(message) => Self::Conflict(message),
             DomainError::Forbidden(message) => Self::Forbidden(message),
+            DomainError::TooManyRequests(message) => Self::TooManyRequests(message),
             DomainError::Repository(message) => Self::Internal(message),
         }
     }
@@ -162,6 +167,10 @@ mod tests {
         assert_eq!(
             AppError::from(DomainError::NotFound("article")),
             AppError::NotFound("article not found".into())
+        );
+        assert_eq!(
+            AppError::from(DomainError::TooManyRequests("wait".into())),
+            AppError::TooManyRequests("wait".into())
         );
         assert!(matches!(
             AppError::from(DomainError::Repository("db down".into())),

@@ -311,6 +311,55 @@ async fn admin_publishes_and_readers_comment() {
 }
 
 #[tokio::test]
+async fn comments_are_throttled() {
+    let app = TestApp::start().await;
+    let admin = app.register_admin().await;
+    let article = app.publish_article(&admin).await;
+    let uri = format!(
+        "/api/articles/{}/comments",
+        article["slug"].as_str().unwrap()
+    );
+    let (member, _) = app.register().await;
+    let (other, _) = app.register().await;
+    let comment = json!({ "content": "Great article!" });
+    let post = |token: String| {
+        let (uri, comment) = (uri.clone(), comment.clone());
+        let app = &app;
+        async move {
+            app.call(Method::POST, &uri, Some(&token), Some(comment))
+                .await
+        }
+    };
+
+    // A member cannot post twice in a row.
+    let (status, created) = post(member.clone()).await;
+    assert_eq!(status, StatusCode::CREATED, "{created}");
+    let (status, error) = post(member.clone()).await;
+    assert_eq!(status, StatusCode::TOO_MANY_REQUESTS, "{error}");
+    assert_eq!(error["error"], "too_many_requests");
+    assert_eq!(
+        error["message"],
+        "you already posted the last comment, wait for a reply or try again in 12 hours"
+    );
+
+    // Once someone replied, they must still wait for the cooldown.
+    let (status, created) = post(other).await;
+    assert_eq!(status, StatusCode::CREATED, "{created}");
+    let (status, error) = post(member).await;
+    assert_eq!(status, StatusCode::TOO_MANY_REQUESTS, "{error}");
+    assert_eq!(
+        error["message"],
+        "please wait 5 minutes before commenting again"
+    );
+
+    // Admins are exempt.
+    for _ in 0..2 {
+        let (status, created) = post(admin.clone()).await;
+        assert_eq!(status, StatusCode::CREATED, "{created}");
+    }
+}
+
+#[tokio::test]
 async fn comments_can_be_closed_per_article() {
     let app = TestApp::start().await;
     let admin = app.register_admin().await;

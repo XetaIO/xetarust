@@ -2,12 +2,12 @@
 
 use std::sync::Arc;
 
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, Duration, TimeZone, Utc};
 use uuid::Uuid;
 use xetaravel_kernel::{FixedClock, Principal};
 
 use crate::application::ports::{MockArticleCatalog, MockAuthorDirectory};
-use crate::domain::{ArticleId, AuthorId, Comment, CommentableArticle};
+use crate::domain::{ArticleId, AuthorId, Comment, CommentThrottle, CommentableArticle};
 
 /// Returns the instant every test clock is frozen at.
 pub fn now() -> DateTime<Utc> {
@@ -17,6 +17,14 @@ pub fn now() -> DateTime<Utc> {
 /// Returns a fixed clock frozen at [`now`].
 pub fn clock() -> Arc<FixedClock> {
     Arc::new(FixedClock(now()))
+}
+
+/// Returns the anti-flood policy of the tests (distinct from the default one).
+pub fn throttle() -> CommentThrottle {
+    CommentThrottle {
+        double_post_window: Duration::hours(1),
+        cooldown: Duration::minutes(2),
+    }
 }
 
 /// Builds an admin principal.

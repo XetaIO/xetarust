@@ -21,6 +21,7 @@ use tokio::net::TcpListener;
 use tower::ServiceExt;
 use uuid::Uuid;
 use xetaravel_app::{AppState, Config, RateLimitSettings, router};
+use xetaravel_discussion::CommentThrottle;
 use xetaravel_identity::{CaptchaSettings, JwtSettings};
 
 /// Turnstile secret the API sends to the fake `siteverify`.
@@ -82,6 +83,7 @@ impl TestApp {
                 siteverify_url: fake_cloudflare().await,
             },
             auth_rate_limit,
+            comment_throttle: CommentThrottle::default(),
             app_addr: "127.0.0.1:0".into(),
             cors_origin: "http://localhost:3000".into(),
             uploads_dir: uploads.path().to_path_buf(),

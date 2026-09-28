@@ -10,7 +10,7 @@ use crate::application::ports::{ArticleCatalog, AuthorDirectory};
 use crate::application::use_cases::{
     DeleteAuthorComments, DeleteComment, ListComments, PostComment,
 };
-use crate::domain::CommentRepository;
+use crate::domain::{CommentRepository, CommentThrottle};
 use crate::infrastructure::persistence::SeaOrmCommentRepository;
 
 /// Every use case of the Discussion context.
@@ -24,18 +24,20 @@ pub struct DiscussionModule {
 impl DiscussionModule {
     /// Wires the PostgreSQL repository and the given outgoing ports into the
     /// use cases. `articles` and `authors` are provided by the composition
-    /// root (anti-corruption layer).
+    /// root (anti-corruption layer); `throttle` is the anti-flood policy of
+    /// the members' comments.
     pub fn new(
         db: DatabaseConnection,
         clock: Arc<dyn Clock>,
         articles: Arc<dyn ArticleCatalog>,
         authors: Arc<dyn AuthorDirectory>,
+        throttle: CommentThrottle,
     ) -> Self {
         let comments: Arc<dyn CommentRepository> = Arc::new(SeaOrmCommentRepository::new(db));
 
         Self {
             list_comments: ListComments::new(comments.clone(), articles.clone(), authors.clone()),
-            post_comment: PostComment::new(comments.clone(), articles, authors, clock),
+            post_comment: PostComment::new(comments.clone(), articles, authors, clock, throttle),
             delete_comment: DeleteComment::new(comments.clone()),
             delete_author_comments: DeleteAuthorComments::new(comments),
         }

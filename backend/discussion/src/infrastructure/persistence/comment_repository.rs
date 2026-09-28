@@ -1,13 +1,14 @@
 use async_trait::async_trait;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, DbBackend, EntityTrait,
+    QueryFilter, QueryOrder, Select, Statement, TransactionTrait,
 };
 use xetaravel_kernel::DomainResult;
 use xetaravel_kernel::persistence::db_error;
 
 use super::entity as comment;
-use crate::domain::{ArticleId, AuthorId, Comment, CommentId, CommentRepository};
+use crate::domain::{ArticleId, AuthorId, Comment, CommentId, CommentRepository, CommentThrottle};
 
 /// PostgreSQL implementation of [`CommentRepository`].
 #[derive(Clone)]
@@ -46,6 +47,61 @@ fn from_comment(comment: &Comment) -> comment::ActiveModel {
     }
 }
 
+/// Takes a transaction-scoped PostgreSQL advisory lock on `article_id`:
+/// throttled posts on the same article wait for each other until the
+/// transaction ends, other articles are not blocked.
+async fn lock_article(db: &impl ConnectionTrait, article_id: ArticleId) -> DomainResult<()> {
+    db.execute_raw(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        "SELECT pg_advisory_xact_lock(hashtext('comments:' || $1)::bigint)",
+        [article_id.as_uuid().to_string().into()],
+    ))
+    .await
+    .map_err(db_error)?;
+    Ok(())
+}
+
+/// Loads the most recent comment matched by `query`.
+async fn latest(
+    db: &impl ConnectionTrait,
+    query: Select<comment::Entity>,
+) -> DomainResult<Option<Comment>> {
+    Ok(query
+        .order_by_desc(comment::Column::CreatedAt)
+        .order_by_desc(comment::Column::Id)
+        .one(db)
+        .await
+        .map_err(db_error)?
+        .map(to_comment))
+}
+
+/// Loads the latest comment of `article_id`, whoever wrote it.
+async fn latest_on_article(
+    db: &impl ConnectionTrait,
+    article_id: ArticleId,
+) -> DomainResult<Option<Comment>> {
+    latest(
+        db,
+        comment::Entity::find().filter(comment::Column::ArticleId.eq(article_id.as_uuid())),
+    )
+    .await
+}
+
+/// Loads the latest comment written by `author_id` on `article_id`.
+async fn latest_by_author(
+    db: &impl ConnectionTrait,
+    article_id: ArticleId,
+    author_id: AuthorId,
+) -> DomainResult<Option<Comment>> {
+    latest(
+        db,
+        comment::Entity::find()
+            .filter(comment::Column::ArticleId.eq(article_id.as_uuid()))
+            .filter(comment::Column::AuthorId.eq(author_id.as_uuid())),
+    )
+    .await
+}
+
 #[async_trait]
 impl CommentRepository for SeaOrmCommentRepository {
     /// Finds a comment by id.
@@ -78,6 +134,29 @@ impl CommentRepository for SeaOrmCommentRepository {
             .await
             .map_err(db_error)?;
         Ok(())
+    }
+
+    /// Inserts `comment` if `throttle` allows it, inside a transaction holding
+    /// the advisory lock of the article (the transaction is rolled back on refusal).
+    async fn create_throttled(
+        &self,
+        comment: &Comment,
+        throttle: &CommentThrottle,
+    ) -> DomainResult<()> {
+        let txn = self.db.begin().await.map_err(db_error)?;
+        lock_article(&txn, comment.article_id).await?;
+
+        let last_on_article = latest_on_article(&txn, comment.article_id).await?;
+        let last_by_author = latest_by_author(&txn, comment.article_id, comment.author_id).await?;
+        throttle.ensure_can_post(
+            comment.author_id,
+            last_on_article.as_ref(),
+            last_by_author.as_ref(),
+            comment.created_at,
+        )?;
+
+        from_comment(comment).insert(&txn).await.map_err(db_error)?;
+        txn.commit().await.map_err(db_error)
     }
 
     /// Deletes a comment; returns `false` when it did not exist.

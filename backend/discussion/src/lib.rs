@@ -15,6 +15,7 @@ pub mod infrastructure;
 mod module;
 
 pub use application::ports::{ArticleCatalog, AuthorDirectory};
+pub use domain::CommentThrottle;
 pub use http::router;
 pub use infrastructure::migrations::migrations;
 pub use module::DiscussionModule;

@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use xetaravel_kernel::DomainResult;
 
-use super::{ArticleId, AuthorId, Comment, CommentId};
+use super::{ArticleId, AuthorId, Comment, CommentId, CommentThrottle};
 
 /// Persistence port of the [`Comment`] aggregate.
 #[cfg_attr(test, mockall::automock)]
@@ -15,6 +15,14 @@ pub trait CommentRepository: Send + Sync {
 
     /// Inserts a new comment.
     async fn create(&self, comment: &Comment) -> DomainResult<()>;
+
+    /// Inserts `comment` only if `throttle` allows its author to post, checking
+    /// and inserting atomically (concurrent posts on the same article are serialized).
+    async fn create_throttled(
+        &self,
+        comment: &Comment,
+        throttle: &CommentThrottle,
+    ) -> DomainResult<()>;
 
     /// Deletes a comment. Returns `false` when it did not exist.
     async fn delete(&self, id: CommentId) -> DomainResult<bool>;

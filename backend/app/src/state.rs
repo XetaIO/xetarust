@@ -50,7 +50,13 @@ impl AppState {
             publishing.published_articles(),
         ));
 
-        let discussion = Arc::new(DiscussionModule::new(db, clock, articles, authors));
+        let discussion = Arc::new(DiscussionModule::new(
+            db,
+            clock,
+            articles,
+            authors,
+            config.comment_throttle,
+        ));
 
         Self {
             principals: identity.principals(),
