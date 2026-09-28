@@ -9,9 +9,17 @@ import { getComments } from "@/features/discussion/queries";
 import { getIdentitySettings } from "@/features/identity/queries";
 import { getCurrentUser } from "@/features/identity/session";
 import { Markdown } from "@/features/publishing/components/markdown";
+import { ShareButtons } from "@/features/publishing/components/share-buttons";
 import { coverUrl } from "@/features/publishing/cover";
 import { getArticle } from "@/features/publishing/queries";
 import { formatDate } from "@/lib/format";
+
+const DOMAIN_URL = process.env.DOMAIN_URL ?? "https://xetaravel.com";
+
+/** Canonical public URL of the article with the given slug. */
+function articleUrl(slug: string): string {
+    return `${DOMAIN_URL}/blog/${slug}`;
+}
 
 /** Uses the article title, excerpt and cover image as metadata. */
 export async function generateMetadata({ params }: PageProps<"/blog/[slug]">): Promise<Metadata> {
@@ -20,7 +28,7 @@ export async function generateMetadata({ params }: PageProps<"/blog/[slug]">): P
         return {};
     }
 
-    const url = `https://xetaravel.com/blog/${article.slug}`;
+    const url = articleUrl(article.slug);
     const image = article.cover_image ? coverUrl(article.cover_image) : "/og-image.png";
 
     return {
@@ -95,6 +103,9 @@ export default async function ArticlePage({ params }: PageProps<"/blog/[slug]">)
                     )}
                     <span className="inline-flex items-center gap-1">
                         <Clock className="size-3.5" /> {article.reading_time_minutes} min read
+                    </span>
+                    <span className="sm:ml-auto">
+                        <ShareButtons url={articleUrl(article.slug)} title={article.title} />
                     </span>
                 </p>
             </header>

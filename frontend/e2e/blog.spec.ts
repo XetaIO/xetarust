@@ -85,6 +85,16 @@ test("admin publishes an article and a member comments it", async ({ browser }) 
   await expect(reader.getByRole("heading", { name: "Intro" })).toBeVisible();
   await expect(reader.getByText("to join the discussion")).toBeVisible();
 
+  // Share links point to the official intents with the encoded article URL.
+  const encodedPath = encodeURIComponent(new URL(reader.url()).pathname);
+  const shareHref = (name: string) => reader.getByRole("link", { name }).getAttribute("href");
+  expect(await shareHref("Share on LinkedIn")).toContain("linkedin.com/sharing/share-offsite/?url=");
+  expect(await shareHref("Share on LinkedIn")).toContain(encodedPath);
+  expect(await shareHref("Share on X")).toContain("x.com/intent/post?url=");
+  expect(await shareHref("Share on X")).toContain(encodedPath);
+  expect(await shareHref("Share on Facebook")).toContain("facebook.com/sharer/sharer.php?u=");
+  expect(await shareHref("Share on Facebook")).toContain(encodedPath);
+
   // --- Member: registers and comments.
   const memberContext = await browser.newContext();
   const member = await memberContext.newPage();
