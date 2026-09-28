@@ -92,6 +92,7 @@ export default async function ArticlePage({ params }: PageProps<"/blog/[slug]">)
                 comments={comments}
                 viewer={user && { id: user.id, isAdmin: user.role === "admin" }}
                 canRegister={identitySettings.registration_enabled}
+                commentsEnabled={article.comments_enabled}
             />
         </article>
     );

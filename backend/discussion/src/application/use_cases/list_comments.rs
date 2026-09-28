@@ -29,9 +29,10 @@ impl ListComments {
     }
 
     /// Returns the comments of the article identified by `slug`, oldest first.
+    /// They stay readable even when the article no longer accepts comments.
     pub async fn execute(&self, slug: &str) -> AppResult<Vec<CommentDto>> {
-        let article_id = commentable_article(self.articles.as_ref(), slug).await?;
-        let comments = self.comments.list_by_article(article_id).await?;
+        let article = commentable_article(self.articles.as_ref(), slug).await?;
+        let comments = self.comments.list_by_article(article.id).await?;
         to_dtos(self.authors.as_ref(), &comments).await
     }
 }
@@ -42,7 +43,9 @@ mod tests {
 
     use super::*;
     use crate::application::ports::MockAuthorDirectory;
-    use crate::application::test_support::{authors, catalog, comment_by, member_principal};
+    use crate::application::test_support::{
+        authors, catalog, closed_catalog, comment_by, member_principal,
+    };
     use crate::domain::MockCommentRepository;
 
     #[tokio::test]
@@ -64,6 +67,26 @@ mod tests {
 
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].author.username, "john");
+    }
+
+    #[tokio::test]
+    async fn lists_comments_even_when_closed() {
+        let comment = comment_by(member_principal());
+        let mut comments = MockCommentRepository::new();
+        comments
+            .expect_list_by_article()
+            .returning(move |_| Ok(vec![comment.clone()]));
+
+        let result = ListComments::new(
+            Arc::new(comments),
+            Arc::new(closed_catalog()),
+            Arc::new(authors()),
+        )
+        .execute("hello-rust")
+        .await
+        .unwrap();
+
+        assert_eq!(result.len(), 1);
     }
 
     #[tokio::test]

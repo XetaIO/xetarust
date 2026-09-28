@@ -8,6 +8,7 @@ use sea_orm_migration::MigrationTrait;
 mod m20260927_publishing_000001_create_categories;
 mod m20260927_publishing_000002_create_articles;
 mod m20260927_publishing_000003_add_article_cover;
+mod m20260928_publishing_000004_add_article_comments_enabled;
 
 /// Returns the migrations of the Publishing context, oldest first.
 pub fn migrations() -> Vec<Box<dyn MigrationTrait>> {
@@ -15,5 +16,6 @@ pub fn migrations() -> Vec<Box<dyn MigrationTrait>> {
         Box::new(m20260927_publishing_000001_create_categories::Migration),
         Box::new(m20260927_publishing_000002_create_articles::Migration),
         Box::new(m20260927_publishing_000003_add_article_cover::Migration),
+        Box::new(m20260928_publishing_000004_add_article_comments_enabled::Migration),
     ]
 }

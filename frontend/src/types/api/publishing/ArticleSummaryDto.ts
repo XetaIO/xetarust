@@ -5,8 +5,4 @@ import type { CategoryDto } from "./CategoryDto";
 /**
  * An article without its body, used in listings.
  */
-export type ArticleSummaryDto = { id: string, title: string, slug: string, excerpt: string | null, 
-/**
- * File name of the cover image, served by `GET /api/covers/{name}`.
- */
-cover_image: string | null, author: AuthorDto, category: CategoryDto, reading_time_minutes: number, is_published: boolean, published_at: string | null, created_at: string, updated_at: string, };
+export type ArticleSummaryDto = { id: string, title: string, slug: string, excerpt: string | null, cover_image: string | null, author: AuthorDto, category: CategoryDto, reading_time_minutes: number, is_published: boolean, comments_enabled: boolean, published_at: string | null, created_at: string, updated_at: string, };

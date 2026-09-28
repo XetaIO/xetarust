@@ -153,6 +153,16 @@ export function ArticleForm({ categories, article, coverError }: ArticleFormProp
                 Publish this article
             </label>
 
+            <label className="flex items-center gap-3 text-sm">
+                <input
+                    type="checkbox"
+                    name="comments_enabled"
+                    defaultChecked={article?.comments_enabled ?? true}
+                    className="size-4 accent-brand-orange"
+                />
+                Allow comments
+            </label>
+
             <div className="flex flex-col-reverse gap-3 sm:flex-row">
                 <Button type="submit" size="lg" disabled={pending} className="w-full sm:w-auto">
                     {pending ? (

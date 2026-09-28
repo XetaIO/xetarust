@@ -18,12 +18,11 @@ const WORDS_PER_MINUTE: usize = 200;
 pub struct ArticleDraft {
     pub category_id: CategoryId,
     pub title: String,
-    /// Explicit slug; derived from the title when `None`.
     pub slug: Option<Slug>,
     pub excerpt: Option<String>,
-    /// Markdown body.
     pub content: String,
     pub publish: bool,
+    pub comments_enabled: bool,
 }
 
 /// A blog post written in Markdown.
@@ -36,10 +35,9 @@ pub struct Article {
     pub slug: Slug,
     pub excerpt: Option<String>,
     pub content: String,
-    /// File name of the cover image, if any.
     pub cover: Option<CoverImage>,
-    /// `Some` when the article is publicly visible.
     pub published_at: Option<DateTime<Utc>>,
+    pub comments_enabled: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -67,6 +65,7 @@ impl Article {
             content: validate_text("content", &draft.content, 1, CONTENT_MAX)?,
             cover: None,
             published_at: draft.publish.then_some(now),
+            comments_enabled: draft.comments_enabled,
             created_at: now,
             updated_at: now,
         })
@@ -91,6 +90,7 @@ impl Article {
         } else {
             self.unpublish();
         }
+        self.comments_enabled = draft.comments_enabled;
         self.updated_at = now;
         Ok(())
     }
@@ -149,7 +149,30 @@ mod tests {
             excerpt: Some("An intro".into()),
             content: "# Hello\n\nSome **markdown**.".into(),
             publish,
+            comments_enabled: true,
         }
+    }
+
+    #[test]
+    fn write_keeps_comments_setting() {
+        let article = Article::write(AuthorId::generate(), draft(true), Utc::now()).unwrap();
+        assert!(article.comments_enabled);
+
+        let mut closed = draft(true);
+        closed.comments_enabled = false;
+        let article = Article::write(AuthorId::generate(), closed, Utc::now()).unwrap();
+        assert!(!article.comments_enabled);
+    }
+
+    #[test]
+    fn revise_can_close_comments() {
+        let mut article = Article::write(AuthorId::generate(), draft(true), Utc::now()).unwrap();
+        let mut changes = draft(true);
+        changes.comments_enabled = false;
+
+        article.revise(changes, Utc::now()).unwrap();
+
+        assert!(!article.comments_enabled);
     }
 
     #[test]

@@ -8,6 +8,8 @@ use xetaravel_kernel::AppResult;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PublishedArticleRef {
     pub id: Uuid,
+    /// Whether readers can post new comments on it.
+    pub comments_enabled: bool,
 }
 
 /// Read-only access to the publicly visible articles.

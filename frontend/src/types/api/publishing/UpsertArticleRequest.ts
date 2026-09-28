@@ -7,12 +7,8 @@ export type UpsertArticleRequest = { category_id: string, title: string,
 /**
  * Derived from the title on creation when empty; kept as-is on update when empty.
  */
-slug?: string | null, excerpt?: string | null, 
+slug?: string | null, excerpt?: string | null, content: string, publish: boolean, 
 /**
- * Markdown body.
+ * `false` to close the comments; open when omitted.
  */
-content: string, 
-/**
- * `true` to make the article public.
- */
-publish: boolean, };
+comments_enabled: boolean, };

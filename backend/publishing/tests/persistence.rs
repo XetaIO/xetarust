@@ -54,6 +54,7 @@ async fn create_article(
             excerpt: Some("Excerpt".into()),
             content: "# Title\n\nBody".into(),
             publish,
+            comments_enabled: true,
         },
         now(),
     )
@@ -202,6 +203,39 @@ async fn article_repository_update_and_delete() {
 }
 
 #[tokio::test]
+async fn article_repository_stores_the_comments_setting() {
+    let db = test_database().await;
+    let repo = SeaOrmArticleRepository::new(db.clone());
+    let author = create_author(&db).await;
+    let category = create_category(&db).await;
+    let mut article = create_article(&db, author, &category, true).await;
+    assert!(
+        repo.find_by_id(article.id)
+            .await
+            .unwrap()
+            .unwrap()
+            .comments_enabled
+    );
+
+    article.comments_enabled = false;
+    repo.update(&article).await.unwrap();
+
+    assert_eq!(
+        repo.find_by_id(article.id).await.unwrap(),
+        Some(article.clone())
+    );
+    assert!(
+        !repo
+            .find_categorized_by_slug(&article.slug)
+            .await
+            .unwrap()
+            .unwrap()
+            .article
+            .comments_enabled
+    );
+}
+
+#[tokio::test]
 async fn articles_require_an_existing_author() {
     let db = test_database().await;
     let category = create_category(&db).await;
@@ -214,6 +248,7 @@ async fn articles_require_an_existing_author() {
             excerpt: None,
             content: "Body".into(),
             publish: false,
+            comments_enabled: true,
         },
         now(),
     )

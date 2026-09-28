@@ -51,6 +51,7 @@ pub(super) fn to_article(model: article::Model) -> DomainResult<Article> {
             .transpose()
             .map_err(|e| corrupted("articles", e))?,
         published_at: model.published_at,
+        comments_enabled: model.comments_enabled,
         created_at: model.created_at,
         updated_at: model.updated_at,
     })
@@ -68,6 +69,7 @@ pub(super) fn from_article(article: &Article) -> article::ActiveModel {
         content: Set(article.content.clone()),
         cover_image: Set(article.cover.as_ref().map(|cover| cover.to_string())),
         published_at: Set(article.published_at),
+        comments_enabled: Set(article.comments_enabled),
         created_at: Set(article.created_at),
         updated_at: Set(article.updated_at),
     }

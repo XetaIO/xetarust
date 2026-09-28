@@ -7,7 +7,7 @@ use uuid::Uuid;
 use xetaravel_kernel::{FixedClock, Principal};
 
 use crate::application::ports::{MockArticleCatalog, MockAuthorDirectory};
-use crate::domain::{ArticleId, AuthorId, Comment};
+use crate::domain::{ArticleId, AuthorId, Comment, CommentableArticle};
 
 /// Returns the instant every test clock is frozen at.
 pub fn now() -> DateTime<Utc> {
@@ -40,12 +40,28 @@ pub fn comment_by(principal: Principal) -> Comment {
     .unwrap()
 }
 
-/// Returns a catalog where every slug is a published article (or none is).
+/// Returns a catalog where every slug is a published article with open
+/// comments (or none is published).
 pub fn catalog(published: bool) -> MockArticleCatalog {
+    catalog_of(published.then_some(true))
+}
+
+/// Returns a catalog where every slug is a published article whose comments
+/// are closed.
+pub fn closed_catalog() -> MockArticleCatalog {
+    catalog_of(Some(false))
+}
+
+/// Returns a catalog resolving every slug to a published article whose
+/// comments are open or not, or to nothing when `comments_open` is `None`.
+fn catalog_of(comments_open: Option<bool>) -> MockArticleCatalog {
     let mut catalog = MockArticleCatalog::new();
-    catalog
-        .expect_published_article_id()
-        .returning(move |_| Ok(published.then(ArticleId::generate)));
+    catalog.expect_published_article().returning(move |_| {
+        Ok(comments_open.map(|comments_open| CommentableArticle {
+            id: ArticleId::generate(),
+            comments_open,
+        }))
+    });
     catalog
 }
 

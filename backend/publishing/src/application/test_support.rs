@@ -45,6 +45,7 @@ pub fn article(author: AuthorId, category: &Category, publish: bool) -> Article 
             excerpt: None,
             content: "Some content".into(),
             publish,
+            comments_enabled: true,
         },
         now(),
     )

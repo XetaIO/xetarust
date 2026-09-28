@@ -1,6 +1,6 @@
 # Xetaravel
 
-Personal website of Emeric Fevre — portfolio, blog and administration.
+My personal website — portfolio, blog and administration.
 
 - **Backend**: Rust, Axum, SeaORM, PostgreSQL, JWT — domain-first architecture (`backend/`): three
   bounded contexts (`identity`, `publishing`, `discussion`), each hexagonal inside, sharing a small
@@ -34,11 +34,11 @@ Next.js refuse to start without them) and a per-IP rate limit (`AUTH_RATE_LIMIT_
 
 One Railway project, three services, deployed from `main` (enable _Wait for CI_):
 
-| Service    | Source                                                               | Networking                            |
-| ---------- | -------------------------------------------------------------------- | ------------------------------------- |
-| `Postgres` | PostgreSQL template                                                  | private only                          |
-| `backend`  | root directory `/`, config file `/backend/railway.toml`              | private only (**no public domain**)   |
-| `frontend` | root directory `/frontend`, config file `/frontend/railway.toml`     | public domain                         |
+| Service    | Source                                                           | Networking                          |
+| ---------- | ---------------------------------------------------------------- | ----------------------------------- |
+| `Postgres` | PostgreSQL template                                              | private only                        |
+| `backend`  | root directory `/`, config file `/backend/railway.toml`          | private only (**no public domain**) |
+| `frontend` | root directory `/frontend`, config file `/frontend/railway.toml` | public domain                       |
 
 The `backend` service gets a **volume mounted on `/data`**: cover images are stored in
 `/data/uploads/covers` and survive redeployments (a service with a volume runs a single replica).

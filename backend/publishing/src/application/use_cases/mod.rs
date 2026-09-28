@@ -70,6 +70,7 @@ async fn build_article_draft(
         excerpt: input.excerpt,
         content: input.content,
         publish: input.publish,
+        comments_enabled: input.comments_enabled,
     })
 }
 

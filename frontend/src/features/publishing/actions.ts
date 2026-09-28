@@ -25,6 +25,7 @@ export async function saveArticle(id: string | null, _: FormState, data: FormDat
     excerpt: optionalField(data, "excerpt"),
     content: field(data, "content"),
     publish: data.get("publish") === "on",
+    comments_enabled: data.get("comments_enabled") === "on",
   };
 
   let saved: ArticleDto;

@@ -206,6 +206,12 @@ impl TestApp {
 
     /// Creates a category and a published article as `admin`; returns the article JSON.
     pub async fn publish_article(&self, admin: &str) -> Value {
+        self.publish_article_with(admin, json!({})).await
+    }
+
+    /// Same as [`TestApp::publish_article`], with the `extra` fields (e.g.
+    /// `comments_enabled`) merged into the article form.
+    pub async fn publish_article_with(&self, admin: &str, extra: Value) -> Value {
         let (status, category) = self
             .call(
                 Method::POST,
@@ -216,20 +222,19 @@ impl TestApp {
             .await;
         assert_eq!(status, StatusCode::CREATED, "{category}");
 
+        let mut form = json!({
+            "category_id": category["id"],
+            "title": format!("Article {}", Uuid::now_v7()),
+            "slug": null,
+            "excerpt": "Short intro",
+            "content": "# Hello\n\nMarkdown **body**.",
+            "publish": true
+        });
+        if let (Some(form), Some(extra)) = (form.as_object_mut(), extra.as_object()) {
+            form.extend(extra.clone());
+        }
         let (status, article) = self
-            .call(
-                Method::POST,
-                "/api/admin/articles",
-                Some(admin),
-                Some(json!({
-                    "category_id": category["id"],
-                    "title": format!("Article {}", Uuid::now_v7()),
-                    "slug": null,
-                    "excerpt": "Short intro",
-                    "content": "# Hello\n\nMarkdown **body**.",
-                    "publish": true
-                })),
-            )
+            .call(Method::POST, "/api/admin/articles", Some(admin), Some(form))
             .await;
         assert_eq!(status, StatusCode::CREATED, "{article}");
         article

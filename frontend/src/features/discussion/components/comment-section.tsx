@@ -21,10 +21,15 @@ interface CommentSectionProps {
     viewer: CommentViewer | null;
     /** Whether visitors can create an account (provided by the page). */
     canRegister: boolean;
+    /** Whether the article accepts new comments; existing ones stay visible either way. */
+    commentsEnabled: boolean;
 }
 
-/** Comments of an article; members can post, authors and admins can delete. */
-export function CommentSection({ slug, comments, viewer, canRegister }: CommentSectionProps) {
+/**
+ * Comments of an article; members can post (unless comments are closed),
+ * authors and admins can delete.
+ */
+export function CommentSection({ slug, comments, viewer, canRegister, commentsEnabled }: CommentSectionProps) {
     return (
         <section aria-labelledby="comments" className="mt-12 border-t border-white/10 pt-8 sm:mt-16 sm:pt-10">
             <h2 id="comments" className="text-2xl font-semibold">
@@ -54,11 +59,17 @@ export function CommentSection({ slug, comments, viewer, canRegister }: CommentS
                         </p>
                     </li>
                 ))}
-                {comments.length === 0 && <li className="text-muted-foreground">No comment yet — be the first!</li>}
+                {comments.length === 0 && commentsEnabled && (
+                    <li className="text-muted-foreground">No comment yet — be the first!</li>
+                )}
             </ul>
 
             <div className="mt-8">
-                {viewer ? (
+                {!commentsEnabled ? (
+                    <p className="rounded-2xl border border-dashed border-white/10 p-4 text-center text-muted-foreground sm:p-6">
+                        Comments are closed on this article.
+                    </p>
+                ) : viewer ? (
                     <CommentForm slug={slug} />
                 ) : (
                     <p className="rounded-2xl border border-dashed border-white/10 p-4 text-center text-muted-foreground sm:p-6">

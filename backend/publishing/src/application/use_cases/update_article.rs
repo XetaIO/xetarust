@@ -82,6 +82,7 @@ mod tests {
             excerpt: None,
             content: "New body".into(),
             publish: false,
+            comments_enabled: false,
         }
     }
 
@@ -118,7 +119,7 @@ mod tests {
             .returning(|_, _| Ok(false));
         articles
             .expect_update()
-            .withf(|a| a.title == "Renamed" && !a.is_published())
+            .withf(|a| a.title == "Renamed" && !a.is_published() && !a.comments_enabled)
             .times(1)
             .returning(|_| Ok(()));
         articles

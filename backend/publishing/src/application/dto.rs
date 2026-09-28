@@ -73,12 +73,12 @@ pub struct ArticleSummaryDto {
     pub title: String,
     pub slug: String,
     pub excerpt: Option<String>,
-    /// File name of the cover image, served by `GET /api/covers/{name}`.
     pub cover_image: Option<String>,
     pub author: AuthorDto,
     pub category: CategoryDto,
     pub reading_time_minutes: u32,
     pub is_published: bool,
+    pub comments_enabled: bool,
     pub published_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -98,6 +98,7 @@ impl From<&ArticleView> for ArticleSummaryDto {
             category: (&view.category).into(),
             reading_time_minutes: article.reading_time_minutes(),
             is_published: article.is_published(),
+            comments_enabled: article.comments_enabled,
             published_at: article.published_at,
             created_at: article.created_at,
             updated_at: article.updated_at,
@@ -111,7 +112,6 @@ impl From<&ArticleView> for ArticleSummaryDto {
 pub struct ArticleDto {
     #[serde(flatten)]
     pub summary: ArticleSummaryDto,
-    /// Markdown body.
     pub content: String,
 }
 
@@ -145,12 +145,18 @@ pub struct UpsertArticleRequest {
     #[ts(optional = nullable)]
     #[validate(length(max = 500, message = "must contain at most 500 characters"))]
     pub excerpt: Option<String>,
-    /// Markdown body.
     #[validate(length(min = 1, message = "is required"))]
     pub content: String,
-    /// `true` to make the article public.
     #[serde(default)]
     pub publish: bool,
+    /// `false` to close the comments; open when omitted.
+    #[serde(default = "enabled_by_default")]
+    pub comments_enabled: bool,
+}
+
+/// Default value of [`UpsertArticleRequest::comments_enabled`]: comments are open.
+fn enabled_by_default() -> bool {
+    true
 }
 
 /// Query string of the public article listing.
@@ -159,6 +165,23 @@ pub struct UpsertArticleRequest {
 pub struct ArticlesQuery {
     pub page: Option<u64>,
     pub per_page: Option<u64>,
-    /// Category slug to filter on.
     pub category: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn article_request_keeps_comments_open_by_default() {
+        let request: UpsertArticleRequest = serde_json::from_value(serde_json::json!({
+            "category_id": Uuid::now_v7(),
+            "title": "Hello Rust",
+            "content": "Body",
+        }))
+        .unwrap();
+
+        assert!(request.comments_enabled);
+        assert!(!request.publish);
+    }
 }

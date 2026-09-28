@@ -311,6 +311,63 @@ async fn admin_publishes_and_readers_comment() {
 }
 
 #[tokio::test]
+async fn comments_can_be_closed_per_article() {
+    let app = TestApp::start().await;
+    let admin = app.register_admin().await;
+    let article = app
+        .publish_article_with(&admin, json!({ "comments_enabled": false }))
+        .await;
+    let slug = article["slug"].as_str().unwrap();
+    let uri = format!("/api/articles/{slug}/comments");
+
+    // The setting is public and reading stays possible.
+    let (status, public) = app
+        .call(Method::GET, &format!("/api/articles/{slug}"), None, None)
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(public["comments_enabled"], false);
+    let (status, comments) = app.call(Method::GET, &uri, None, None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(comments, json!([]));
+
+    // Members cannot post.
+    let (member, _) = app.register().await;
+    let comment = json!({ "content": "Great article!" });
+    let (status, error) = app
+        .call(Method::POST, &uri, Some(&member), Some(comment.clone()))
+        .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert_eq!(error["error"], "forbidden");
+    assert_eq!(error["message"], "comments are closed on this article");
+
+    // Reopening the comments lets them post again.
+    let reopen = json!({
+        "category_id": article["category"]["id"],
+        "title": article["title"],
+        "slug": slug,
+        "excerpt": null,
+        "content": "Reopened",
+        "publish": true,
+        "comments_enabled": true
+    });
+    let (status, updated) = app
+        .call(
+            Method::PUT,
+            &format!("/api/admin/articles/{}", article["id"].as_str().unwrap()),
+            Some(&admin),
+            Some(reopen),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{updated}");
+    assert_eq!(updated["comments_enabled"], true);
+
+    let (status, created) = app
+        .call(Method::POST, &uri, Some(&member), Some(comment))
+        .await;
+    assert_eq!(status, StatusCode::CREATED, "{created}");
+}
+
+#[tokio::test]
 async fn drafts_are_hidden_from_the_public() {
     let app = TestApp::start().await;
     let admin = app.register_admin().await;

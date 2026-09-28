@@ -18,6 +18,7 @@ pub struct Model {
     pub content: String,
     pub cover_image: Option<String>,
     pub published_at: Option<DateTimeUtc>,
+    pub comments_enabled: bool,
     pub created_at: DateTimeUtc,
     pub updated_at: DateTimeUtc,
 }

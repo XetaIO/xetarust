@@ -33,7 +33,8 @@ impl PostComment {
     }
 
     /// Validates and stores the comment on the article identified by `slug`,
-    /// then returns it with its author.
+    /// then returns it with its author. Fails with `Forbidden` when the
+    /// comments of the article are closed.
     pub async fn execute(
         &self,
         principal: Principal,
@@ -41,10 +42,11 @@ impl PostComment {
         input: CreateCommentRequest,
     ) -> AppResult<CommentDto> {
         input.validate()?;
-        let article_id = commentable_article(self.articles.as_ref(), slug).await?;
+        let article = commentable_article(self.articles.as_ref(), slug).await?;
+        article.ensure_open()?;
 
         let author = AuthorId::from(principal.user_id);
-        let comment = Comment::post(article_id, author, &input.content, self.clock.now())?;
+        let comment = Comment::post(article.id, author, &input.content, self.clock.now())?;
         self.comments.create(&comment).await?;
 
         to_dtos(self.authors.as_ref(), std::slice::from_ref(&comment))
@@ -58,7 +60,9 @@ impl PostComment {
 mod tests {
     use super::*;
     use crate::application::ports::{MockArticleCatalog, MockAuthorDirectory};
-    use crate::application::test_support::{authors, catalog, clock, member_principal};
+    use crate::application::test_support::{
+        authors, catalog, clock, closed_catalog, member_principal,
+    };
     use crate::domain::MockCommentRepository;
 
     /// Returns a valid comment form with `content`.
@@ -107,6 +111,27 @@ mod tests {
         .unwrap_err();
 
         assert!(matches!(error, AppError::NotFound(_)));
+    }
+
+    #[tokio::test]
+    async fn refuses_comments_when_closed() {
+        let mut comments = MockCommentRepository::new();
+        comments.expect_create().times(0);
+
+        let error = PostComment::new(
+            Arc::new(comments),
+            Arc::new(closed_catalog()),
+            Arc::new(MockAuthorDirectory::new()),
+            clock(),
+        )
+        .execute(member_principal(), "hello-rust", request("Hello"))
+        .await
+        .unwrap_err();
+
+        assert_eq!(
+            error,
+            AppError::Forbidden("comments are closed on this article".into())
+        );
     }
 
     #[tokio::test]

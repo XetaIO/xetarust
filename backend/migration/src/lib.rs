@@ -45,6 +45,7 @@ mod tests {
                 "m20260927_publishing_000001_create_categories",
                 "m20260927_publishing_000002_create_articles",
                 "m20260927_publishing_000003_add_article_cover",
+                "m20260928_publishing_000004_add_article_comments_enabled",
                 "m20260927_discussion_000001_create_comments",
             ]
         );

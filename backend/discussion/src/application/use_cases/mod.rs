@@ -15,16 +15,19 @@ use xetaravel_kernel::{AppError, AppResult};
 
 use crate::application::dto::CommentDto;
 use crate::application::ports::{ArticleCatalog, AuthorDirectory};
-use crate::domain::{ArticleId, AuthorId, Comment};
+use crate::domain::{AuthorId, Comment, CommentableArticle};
 
 /// Name displayed when the author is unknown to the directory.
 pub const UNKNOWN_AUTHOR: &str = "unknown";
 
 /// Resolves a slug into a commentable (published) article, or fails with
 /// `NotFound`. Drafts and malformed slugs are reported as missing.
-async fn commentable_article(catalog: &dyn ArticleCatalog, slug: &str) -> AppResult<ArticleId> {
+async fn commentable_article(
+    catalog: &dyn ArticleCatalog,
+    slug: &str,
+) -> AppResult<CommentableArticle> {
     catalog
-        .published_article_id(slug)
+        .published_article(slug)
         .await?
         .ok_or_else(|| AppError::NotFound("article not found".into()))
 }

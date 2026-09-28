@@ -73,6 +73,7 @@ mod tests {
             excerpt: None,
             content: "Body".into(),
             publish: true,
+            comments_enabled: false,
         }
     }
 
@@ -110,6 +111,7 @@ mod tests {
                 a.author_id.as_uuid() == admin.user_id
                     && a.slug.as_str() == "hello-rust"
                     && a.is_published()
+                    && !a.comments_enabled
             })
             .times(1)
             .returning(|_| Ok(()));

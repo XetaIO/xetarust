@@ -25,6 +25,7 @@ impl FindPublishedArticle {
             .await?
             .map(|entry| PublishedArticleRef {
                 id: entry.article.id.as_uuid(),
+                comments_enabled: entry.article.comments_enabled,
             }))
     }
 }
@@ -50,6 +51,30 @@ mod tests {
             .expect_find_categorized_by_slug()
             .returning(move |_| Ok(published.map(categorized)));
         FindPublishedArticle::new(Arc::new(articles))
+    }
+
+    #[tokio::test]
+    async fn exposes_the_comments_setting() {
+        let mut entry = categorized(true);
+        entry.article.comments_enabled = false;
+        let id = entry.article.id.as_uuid();
+        let mut articles = MockArticleRepository::new();
+        articles
+            .expect_find_categorized_by_slug()
+            .returning(move |_| Ok(Some(entry.clone())));
+
+        let found = FindPublishedArticle::new(Arc::new(articles))
+            .execute("hello-rust")
+            .await
+            .unwrap();
+
+        assert_eq!(
+            found,
+            Some(PublishedArticleRef {
+                id,
+                comments_enabled: false
+            })
+        );
     }
 
     #[tokio::test]
