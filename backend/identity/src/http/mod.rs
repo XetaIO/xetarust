@@ -1,8 +1,10 @@
-//! HTTP adapter of the Identity context: authentication and user administration.
+//! HTTP adapter of the Identity context: authentication, user administration
+//! and settings.
 //! Handlers stay thin: extract, call one use case, serialize.
 
 mod admin;
 mod auth;
+mod settings;
 
 use std::sync::Arc;
 
@@ -36,7 +38,7 @@ where
         .route("/api/auth/login", post(auth::login))
 }
 
-/// Every other route: current account and user administration.
+/// Every other route: current account, user administration and settings.
 pub fn account_router<S>() -> Router<S>
 where
     S: Clone + Send + Sync + 'static,
@@ -50,5 +52,13 @@ where
         .route(
             "/api/admin/users/{id}/ban",
             put(admin::ban_user).delete(admin::unban_user),
+        )
+        .route(
+            "/api/settings/identity",
+            get(settings::get_identity_settings),
+        )
+        .route(
+            "/api/admin/settings/identity",
+            put(settings::update_identity_settings),
         )
 }

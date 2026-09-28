@@ -12,7 +12,7 @@ Site personnel d'Emeric Fevre (Xety) :
 - **`/`** — page de présentation très animée (profil, compétences, parcours, projets). Contenu dans `frontend/src/content/profile.ts`.
 - **`/blog`** — articles en Markdown, catégories, commentaires. Lecture publique, commentaire réservé aux membres connectés.
 - **Utilisateurs** — inscription / connexion. Deux rôles : `member` (par défaut) et `admin`.
-- **`/dashboard`** (admin uniquement) — CRUD articles et catégories, changement de rôle et bannissement des utilisateurs (avec purge optionnelle de leurs commentaires).
+- **`/dashboard`** (admin uniquement) — CRUD articles et catégories, changement de rôle et bannissement des utilisateurs (avec purge optionnelle de leurs commentaires), réglages (ouverture des inscriptions).
 
 | Couche                  | Stack                                                                                                                                                    |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -27,7 +27,7 @@ Le backend est découpé en **trois bounded contexts**, un crate chacun ; l'hexa
 
 | Contexte   | Crate                                         | Responsabilité                           | Concepts possédés                                                                    |
 | ---------- | --------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------ |
-| Identity   | `backend/identity` (`xetaravel-identity`)     | Identité, authentification, autorisation | `User`, `UserId`, `Email`, `Username`, `PasswordHash`, `Role`, `Ban`                      |
+| Identity   | `backend/identity` (`xetaravel-identity`)     | Identité, authentification, autorisation | `User`, `UserId`, `Email`, `Username`, `PasswordHash`, `Role`, `Ban`, `IdentitySettings`  |
 | Publishing | `backend/publishing` (`xetaravel-publishing`) | Création et publication du contenu       | `Article`, `ArticleDraft`, `Category`, `ArticleId`, `CategoryId`, `AuthorId`, `Slug` |
 | Discussion | `backend/discussion` (`xetaravel-discussion`) | Interactions autour du contenu           | `Comment`, `CommentId`, `ArticleId` et `AuthorId` **locaux**                         |
 

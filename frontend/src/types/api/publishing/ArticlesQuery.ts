@@ -3,11 +3,8 @@
 /**
  * Query string of the public article listing.
  */
-export type ArticlesQuery = {
-  page?: number | null;
-  per_page?: number | null;
-  /**
-   * Category slug to filter on.
-   */
-  category?: string | null;
-};
+export type ArticlesQuery = { page?: number | null, per_page?: number | null, 
+/**
+ * Category slug to filter on.
+ */
+category?: string | null, };

@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 
 import { CommentSection } from "@/features/discussion/components/comment-section";
 import { getComments } from "@/features/discussion/queries";
+import { getIdentitySettings } from "@/features/identity/queries";
 import { getCurrentUser } from "@/features/identity/session";
 import { Markdown } from "@/features/publishing/components/markdown";
 import { coverUrl } from "@/features/publishing/cover";
@@ -34,7 +35,11 @@ export default async function ArticlePage({ params }: PageProps<"/blog/[slug]">)
     if (!article) {
         notFound();
     }
-    const [comments, user] = await Promise.all([getComments(slug), getCurrentUser()]);
+    const [comments, user, identitySettings] = await Promise.all([
+        getComments(slug),
+        getCurrentUser(),
+        getIdentitySettings(),
+    ]);
 
     return (
         <article className="mx-auto max-w-3xl">
@@ -86,6 +91,7 @@ export default async function ArticlePage({ params }: PageProps<"/blog/[slug]">)
                 slug={slug}
                 comments={comments}
                 viewer={user && { id: user.id, isAdmin: user.role === "admin" }}
+                canRegister={identitySettings.registration_enabled}
             />
         </article>
     );

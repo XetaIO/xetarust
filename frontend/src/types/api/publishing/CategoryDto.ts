@@ -3,4 +3,4 @@
 /**
  * A blog category.
  */
-export type CategoryDto = { id: string; name: string; slug: string; description: string | null };
+export type CategoryDto = { id: string, name: string, slug: string, description: string | null, };

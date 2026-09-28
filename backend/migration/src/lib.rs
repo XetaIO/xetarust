@@ -41,6 +41,7 @@ mod tests {
             [
                 "m20260927_identity_000001_create_users",
                 "m20260928_identity_000002_add_user_ban",
+                "m20260928_identity_000003_create_identity_settings",
                 "m20260927_publishing_000001_create_categories",
                 "m20260927_publishing_000002_create_articles",
                 "m20260927_publishing_000003_add_article_cover",

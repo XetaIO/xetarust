@@ -5,24 +5,12 @@ import type { CategoryDto } from "./CategoryDto";
 /**
  * A full article, including its Markdown body.
  */
-export type ArticleDto = {
-  /**
-   * Markdown body.
-   */
-  content: string;
-  id: string;
-  title: string;
-  slug: string;
-  excerpt: string | null;
-  /**
-   * File name of the cover image, served by `GET /api/covers/{name}`.
-   */
-  cover_image: string | null;
-  author: AuthorDto;
-  category: CategoryDto;
-  reading_time_minutes: number;
-  is_published: boolean;
-  published_at: string | null;
-  created_at: string;
-  updated_at: string;
-};
+export type ArticleDto = { 
+/**
+ * Markdown body.
+ */
+content: string, id: string, title: string, slug: string, excerpt: string | null, 
+/**
+ * File name of the cover image, served by `GET /api/covers/{name}`.
+ */
+cover_image: string | null, author: AuthorDto, category: CategoryDto, reading_time_minutes: number, is_published: boolean, published_at: string | null, created_at: string, updated_at: string, };

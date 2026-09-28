@@ -8,7 +8,7 @@
 | Use cases | `#[cfg(test)]` dans chaque use case | `mockall` (`Mock*Repository`, `MockPasswordHasher`, `MockTokenService`, `MockHumanVerifier` (fixture `human(valid)`), `MockAuthorDirectory`, `MockArticleCatalog`), `FixedClock`, fixtures `application/test_support.rs` | non |
 | Adapters | unitaires (Argon2, JWT, Turnstile contre un faux serveur Axum, Config, extracteurs) + `backend/<contexte>/tests/persistence.rs` | `cargo test`, `migration::testing` | Postgres de test |
 | ACL inter-contextes | `#[cfg(test)]` dans `backend/app/src/integration/*` | fakes des contrats (`IdentityDirectory`, `PublishedArticles`) | non |
-| HTTP bout en bout | `backend/app/tests/api.rs` (vrai `Router`, les 3 contextes câblés, `tower::ServiceExt::oneshot` ; faux `siteverify` Axum local (jeton `valid`), chaque `call` envoie un `X-Forwarded-For` unique pour ne jamais partager un seau de rate limit, `call_from` pour une IP donnée) | `cargo test` | Postgres de test |
+| HTTP bout en bout | `backend/app/tests/api.rs` + `registration.rs`, harnais partagé dans `tests/common/mod.rs` (vrai `Router`, les 3 contextes câblés, `tower::ServiceExt::oneshot` ; faux `siteverify` Axum local (jeton `valid`), chaque `call` envoie un `X-Forwarded-For` unique pour ne jamais partager un seau de rate limit, `call_from` pour une IP donnée) | `cargo test` | Postgres de test |
 | Architecture | `backend/app/tests/architecture.rs` (`cargo metadata` + scan des sources) | `cargo test` | non |
 | E2E navigateur | `frontend/e2e/*.spec.ts` | Playwright | Postgres dev (API lancée) |
 
@@ -18,6 +18,7 @@
 - `migration::testing::test_database()` (feature `test-support`, en dev-dependency des contextes et de `app`) lit `DATABASE_URL_TEST` depuis `.env`, se connecte et applique les migrations une fois par binaire de test.
 - Les tests de persistance d'un contexte ne dépendent pas des autres contextes : les lignes étrangères exigées par les FKs sont insérées en SQL brut via `seed_user`, `seed_published_article`, `delete_article`.
 - Les tests tournent en parallèle sur la même base : **chaque test crée ses propres données uniques** (`unique()`) et ne dépend jamais d'un comptage global.
+- Exception : un test qui modifie un **état global** (ex. fermer les inscriptions) casserait les tests parallèles. Il vit dans son propre binaire (`backend/app/tests/registration.rs`, un seul test) : `cargo test` exécute les binaires de test l'un après l'autre. Le harnais (`TestApp`, faux `siteverify`, `call`, `register`, `register_admin`…) est partagé via `tests/common/mod.rs` (`mod common;`). Un tel test **rétablit toujours l'état par défaut** (inscriptions ouvertes), comme `settings_repository_round_trip` dans `identity/tests/persistence.rs`.
 - Après un changement d'historique de migrations : `DATABASE_URL=<url de test> cargo run -p migration -- fresh`.
 
 ## Écrire un test de use case
@@ -67,7 +68,7 @@ Un nouveau contexte doit être ajouté à `CONTEXTS` dans ce fichier.
 | crate `backend/migration/` | agrégateur de schéma, CLI et outillage de test |
 | `*/infrastructure/migrations/` | DDL déclaratif, exécuté une fois |
 | `main.rs` | bootstrap / CLI, non testable unitairement |
-| `*/tests/` | code de test (`api.rs`, `architecture.rs`, `persistence.rs`) |
+| `*/tests/` | code de test (`api.rs`, `registration.rs`, `common/`, `architecture.rs`, `persistence.rs`) |
 | `application/test_support.rs` | fixtures de test |
 | `persistence/entity.rs`, `persistence/entities/` | entités SeaORM, code généré par les derives |
 
@@ -78,5 +79,5 @@ Un nouveau contexte doit être ajouté à `CONTEXTS` dans ce fichier.
 ## E2E
 
 - Prérequis : API démarrée (`cargo run -p xetaravel-app`) ; Playwright lance `npm run dev` si besoin. Clés de test Turnstile dans `.env` (`TURNSTILE_SECRET=1x0000000000000000000000000000000AA`) et `frontend/.env.local` (`NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA`) : le widget de test se valide seul, les vraies clés bloquent un navigateur headless.
-- Promotion admin dans les tests directement en base, comme en production : `UPDATE users SET role = 'admin'` via `docker exec xetaravel_postgres psql` (e2e) ou la connexion de test (`register_admin` dans `api.rs`).
+- Promotion admin dans les tests directement en base, comme en production : `UPDATE users SET role = 'admin'` via `docker exec xetaravel_postgres psql` (e2e) ou la connexion de test (`register_admin` dans `tests/common/mod.rs`).
 - Les e2e vérifient aussi que le cookie de session est `httpOnly` et absent de `document.cookie`.

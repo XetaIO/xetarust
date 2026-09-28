@@ -3,9 +3,8 @@
 /**
  * Returned by `DELETE /api/admin/users/{id}/comments`.
  */
-export type DeletedCommentsDto = {
-  /**
-   * Number of comments deleted.
-   */
-  deleted: number;
-};
+export type DeletedCommentsDto = { 
+/**
+ * Number of comments deleted.
+ */
+deleted: number, };

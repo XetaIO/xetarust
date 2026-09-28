@@ -24,6 +24,8 @@ interface AuthFormProps {
     action: (state: FormState, data: FormData) => Promise<FormState>;
     /** Page to go back to after a successful authentication. */
     next: string;
+    /** Whether registrations are open; when `false`, the login form hides the sign-up link. */
+    canRegister?: boolean;
 }
 
 const FIELDS: Record<AuthFormProps["mode"], AuthField[]> = {
@@ -64,7 +66,7 @@ const COPY = {
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
 /** Login or registration form bound to its Server Action, protected by Turnstile. */
-export function AuthForm({ mode, action, next }: AuthFormProps) {
+export function AuthForm({ mode, action, next, canRegister = true }: AuthFormProps) {
     const [state, formAction, pending] = useActionState(action, null);
     const [token, setToken] = useState<string | null>(null);
     const [answeredState, setAnsweredState] = useState(state);
@@ -85,6 +87,7 @@ export function AuthForm({ mode, action, next }: AuthFormProps) {
     }, [state]);
 
     const waitingForCaptcha = !token;
+    const showSwitch = mode === "register" || canRegister;
 
     return (
         <Card className="glass w-full max-w-md">
@@ -138,15 +141,17 @@ export function AuthForm({ mode, action, next }: AuthFormProps) {
                             </>
                         )}
                     </Button>
-                    <p className="text-sm text-muted-foreground">
-                        {copy.switchText}{" "}
-                        <Link
-                            href={`${copy.switchHref}?next=${encodeURIComponent(next)}`}
-                            className="text-brand-orange hover:underline"
-                        >
-                            {copy.switchLabel}
-                        </Link>
-                    </p>
+                    {showSwitch && (
+                        <p className="text-sm text-muted-foreground">
+                            {copy.switchText}{" "}
+                            <Link
+                                href={`${copy.switchHref}?next=${encodeURIComponent(next)}`}
+                                className="text-brand-orange hover:underline"
+                            >
+                                {copy.switchLabel}
+                            </Link>
+                        </p>
+                    )}
                 </CardFooter>
             </form>
         </Card>

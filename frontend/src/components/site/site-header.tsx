@@ -5,6 +5,7 @@ import { Logo } from "@/components/site/logo";
 import { MobileMenu } from "@/components/site/mobile-menu";
 import { buttonVariants } from "@/components/ui/button";
 import { logout } from "@/features/identity/actions";
+import { getIdentitySettings } from "@/features/identity/queries";
 import { getCurrentUser } from "@/features/identity/session";
 import { cn } from "@/lib/utils";
 
@@ -12,9 +13,10 @@ import { cn } from "@/lib/utils";
 const MENU_ITEM =
     "flex items-center gap-2 rounded-xl px-4 py-3 text-sm text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground";
 
-/** Header of the blog and auth pages, aware of the current session. */
+/** Header of the blog and auth pages, aware of the current session and of whether registrations are open. */
 export async function SiteHeader() {
-    const user = await getCurrentUser();
+    const [user, settings] = await Promise.all([getCurrentUser(), getIdentitySettings()]);
+    const canRegister = settings.registration_enabled;
 
     return (
         <header className="sticky top-0 z-40 border-b border-white/5 bg-background/70 backdrop-blur-xl">
@@ -54,9 +56,11 @@ export async function SiteHeader() {
                         <Link href="/login" className={buttonVariants({ variant: "ghost" })}>
                             Log in
                         </Link>
-                        <Link href="/register" className={buttonVariants()}>
-                            Sign up
-                        </Link>
+                        {canRegister && (
+                            <Link href="/register" className={buttonVariants()}>
+                                Sign up
+                            </Link>
+                        )}
                     </div>
                 )}
 
@@ -89,9 +93,11 @@ export async function SiteHeader() {
                             <Link href="/login" className={MENU_ITEM}>
                                 <LogIn className="size-4" /> Log in
                             </Link>
-                            <Link href="/register" className={MENU_ITEM}>
-                                <UserPlus className="size-4" /> Sign up
-                            </Link>
+                            {canRegister && (
+                                <Link href="/register" className={MENU_ITEM}>
+                                    <UserPlus className="size-4" /> Sign up
+                                </Link>
+                            )}
                         </>
                     )}
                 </MobileMenu>

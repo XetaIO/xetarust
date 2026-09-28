@@ -4,4 +4,4 @@ import type { RoleDto } from "./RoleDto";
 /**
  * Body of `PATCH /api/admin/users/{id}/role`.
  */
-export type ChangeRoleRequest = { role: RoleDto };
+export type ChangeRoleRequest = { role: RoleDto, };

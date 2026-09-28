@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { login } from "@/features/identity/actions";
 import { AuthForm } from "@/features/identity/components/auth-form";
+import { getIdentitySettings } from "@/features/identity/queries";
 import { safeRedirectTarget } from "@/features/identity/redirect";
 import { getCurrentUser } from "@/features/identity/session";
 
@@ -15,5 +16,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         redirect(target);
     }
 
-    return <AuthForm mode="login" action={login} next={target} />;
+    const { registration_enabled } = await getIdentitySettings();
+
+    return <AuthForm mode="login" action={login} next={target} canRegister={registration_enabled} />;
 }

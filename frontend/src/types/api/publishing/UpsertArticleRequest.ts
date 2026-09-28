@@ -3,20 +3,16 @@
 /**
  * Body used to create or update an article.
  */
-export type UpsertArticleRequest = {
-  category_id: string;
-  title: string;
-  /**
-   * Derived from the title on creation when empty; kept as-is on update when empty.
-   */
-  slug?: string | null;
-  excerpt?: string | null;
-  /**
-   * Markdown body.
-   */
-  content: string;
-  /**
-   * `true` to make the article public.
-   */
-  publish: boolean;
-};
+export type UpsertArticleRequest = { category_id: string, title: string, 
+/**
+ * Derived from the title on creation when empty; kept as-is on update when empty.
+ */
+slug?: string | null, excerpt?: string | null, 
+/**
+ * Markdown body.
+ */
+content: string, 
+/**
+ * `true` to make the article public.
+ */
+publish: boolean, };

@@ -8,7 +8,7 @@ use xetaravel_kernel::DomainResult;
 use xetaravel_kernel::pagination::{Page, PageRequest};
 use xetaravel_kernel::persistence::db_error;
 
-use super::entity as user;
+use super::entities::user;
 use super::mappers::{from_user, to_user};
 use crate::domain::{Email, User, UserId, UserRepository, Username};
 

@@ -1,4 +1,5 @@
-//! Conversions between `users` rows and the [`User`] aggregate.
+//! Conversions between the rows of the Identity tables and the [`User`] and
+//! [`IdentitySettings`] aggregates.
 //!
 //! Loading a row re-runs the value object validation; a failure means the
 //! database holds corrupted data and is reported as a repository error.
@@ -8,8 +9,9 @@ use sea_orm::ActiveValue::Set;
 use xetaravel_kernel::DomainResult;
 use xetaravel_kernel::persistence::corrupted;
 
-use super::entity::{self as user, UserRole};
-use crate::domain::{Ban, BanReason, Email, PasswordHash, Role, User, Username};
+use super::entities::settings;
+use super::entities::user::{self, UserRole};
+use crate::domain::{Ban, BanReason, Email, IdentitySettings, PasswordHash, Role, User, Username};
 
 impl From<UserRole> for Role {
     /// Converts the database enum into the domain role.
@@ -74,5 +76,25 @@ pub(super) fn from_user(user: &User) -> user::ActiveModel {
             .map(|reason| reason.to_string())),
         created_at: Set(user.created_at),
         updated_at: Set(user.updated_at),
+    }
+}
+
+/// Id of the single row of the `identity_settings` table.
+pub(super) const SETTINGS_ROW_ID: i16 = 1;
+
+/// Converts the `identity_settings` row into the domain settings.
+pub(super) fn to_identity_settings(model: settings::Model) -> DomainResult<IdentitySettings> {
+    Ok(IdentitySettings {
+        registration_enabled: model.registration_enabled,
+        updated_at: model.updated_at,
+    })
+}
+
+/// Converts the domain settings into a fully set active model (single row).
+pub(super) fn from_identity_settings(settings: &IdentitySettings) -> settings::ActiveModel {
+    settings::ActiveModel {
+        id: Set(SETTINGS_ROW_ID),
+        registration_enabled: Set(settings.registration_enabled),
+        updated_at: Set(settings.updated_at),
     }
 }

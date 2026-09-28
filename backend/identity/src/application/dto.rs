@@ -8,7 +8,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::domain::{Role, User};
+use crate::domain::{IdentitySettings, Role, User};
 
 /// Body of `POST /api/auth/register`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Validate, TS)]
@@ -135,4 +135,28 @@ pub struct BanUserRequest {
     #[ts(optional = nullable)]
     #[validate(length(max = 255, message = "must contain at most 255 characters"))]
     pub reason: Option<String>,
+}
+
+/// Runtime settings of the Identity context (`GET /api/settings/identity`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "identity/")]
+pub struct IdentitySettingsDto {
+    /// Whether visitors can create an account.
+    pub registration_enabled: bool,
+}
+
+impl From<&IdentitySettings> for IdentitySettingsDto {
+    /// Builds the DTO from the domain settings.
+    fn from(settings: &IdentitySettings) -> Self {
+        Self {
+            registration_enabled: settings.registration_enabled,
+        }
+    }
+}
+
+/// Body of `PUT /api/admin/settings/identity`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "identity/")]
+pub struct UpdateIdentitySettingsRequest {
+    pub registration_enabled: bool,
 }

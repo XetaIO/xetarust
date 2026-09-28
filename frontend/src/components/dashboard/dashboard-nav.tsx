@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, FolderTree, LayoutDashboard, Users } from "lucide-react";
+import { FileText, FolderTree, LayoutDashboard, Settings, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -11,6 +11,7 @@ const LINKS = [
     { href: "/dashboard/articles", label: "Articles", icon: FileText },
     { href: "/dashboard/categories", label: "Categories", icon: FolderTree },
     { href: "/dashboard/users", label: "Users", icon: Users },
+    { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
 /** Sidebar navigation of the dashboard, highlighting the current section. */

@@ -6,21 +6,25 @@ mod authenticate;
 mod ban_user;
 mod change_user_role;
 mod get_current_user;
+mod get_identity_settings;
 mod get_public_profiles;
 mod list_users;
 mod login_user;
 mod register_user;
 mod unban_user;
+mod update_identity_settings;
 
 pub use authenticate::Authenticate;
 pub use ban_user::BanUser;
 pub use change_user_role::ChangeUserRole;
 pub use get_current_user::GetCurrentUser;
+pub use get_identity_settings::GetIdentitySettings;
 pub use get_public_profiles::GetPublicProfiles;
 pub use list_users::ListUsers;
 pub use login_user::LoginUser;
 pub use register_user::RegisterUser;
 pub use unban_user::UnbanUser;
+pub use update_identity_settings::UpdateIdentitySettings;
 
 use std::net::IpAddr;
 

@@ -12,11 +12,13 @@ frontend/src/
 │   ├── page.tsx                accueil statique animé
 │   ├── (auth)/login|register   formulaires d'auth
 │   ├── blog/                   liste, catégories, article + commentaires (dynamique)
-│   └── dashboard/              admin (layout = requireAdmin()) ; users/actions.ts = banMember (ban Identity + purge Discussion)
+│   └── dashboard/              admin (layout = requireAdmin()) ; users/actions.ts = banMember (ban Identity + purge Discussion) ;
+│                               settings/ = page de composition des réglages (une carte par contexte, aujourd'hui Identity)
 ├── features/
 │   ├── identity/               session.ts (storeSession, clearSession, getCurrentUser, requireUser, requireAdmin),
-│   │                           redirect.ts, client-ip.ts (clientIp, relayé en X-Forwarded-For), actions.ts (login, register, logout, changeUserRole, banUser, unbanUser),
-│   │                           queries.ts (getUsers), components/{auth-form (widget Turnstile), role-toggle, ban-dialog (reçoit l'action de ban en prop)}
+│   │                           redirect.ts, client-ip.ts (clientIp, relayé en X-Forwarded-For), actions.ts (login, register, logout, changeUserRole, banUser, unbanUser, updateIdentitySettings),
+│   │                           queries.ts (getUsers, getIdentitySettings mémoïsée par requête, ouvert si l'API échoue),
+│   │                           components/{auth-form (widget Turnstile, prop canRegister), role-toggle, ban-dialog (reçoit l'action de ban en prop), settings-form}
 │   ├── publishing/             queries.ts (articles, catégories, admin), actions.ts (saveArticle, deleteArticle, saveCategory, deleteCategory),
 │   │                           cover.ts (coverUrl), components/{article-card, article-cover, article-list, category-nav, markdown, article-form, category-form}
 │   └── discussion/             queries.ts (getComments), actions.ts (postComment, deleteComment, deleteAuthorComments),

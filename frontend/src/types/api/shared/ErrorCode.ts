@@ -3,5 +3,4 @@
 /**
  * Stable machine-readable error codes.
  */
-export type ErrorCode =
-  "validation_error" | "not_found" | "unauthorized" | "forbidden" | "conflict" | "too_many_requests" | "internal_error";
+export type ErrorCode = "validation_error" | "not_found" | "unauthorized" | "forbidden" | "conflict" | "too_many_requests" | "internal_error";

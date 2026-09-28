@@ -3,9 +3,8 @@
 /**
  * Body of `PUT /api/admin/users/{id}/ban`.
  */
-export type BanUserRequest = {
-  /**
-   * Optional reason, shown in the dashboard and to the banned user at login.
-   */
-  reason?: string | null;
-};
+export type BanUserRequest = { 
+/**
+ * Optional reason, shown in the dashboard and to the banned user at login.
+ */
+reason?: string | null, };

@@ -7,11 +7,12 @@ use xetaravel_kernel::{AppError, AppResult, Clock};
 use super::{authenticated_response, ensure_human};
 use crate::application::dto::{AuthResponse, RegisterRequest};
 use crate::application::ports::{HumanVerifier, PasswordHasher, TokenService};
-use crate::domain::{Email, User, UserRepository, Username};
+use crate::domain::{Email, SettingsRepository, User, UserRepository, Username};
 
 /// Creates a member account and logs it in.
 pub struct RegisterUser {
     users: Arc<dyn UserRepository>,
+    settings: Arc<dyn SettingsRepository>,
     hasher: Arc<dyn PasswordHasher>,
     tokens: Arc<dyn TokenService>,
     humans: Arc<dyn HumanVerifier>,
@@ -22,6 +23,7 @@ impl RegisterUser {
     /// Builds the use case with its dependencies.
     pub fn new(
         users: Arc<dyn UserRepository>,
+        settings: Arc<dyn SettingsRepository>,
         hasher: Arc<dyn PasswordHasher>,
         tokens: Arc<dyn TokenService>,
         humans: Arc<dyn HumanVerifier>,
@@ -29,6 +31,7 @@ impl RegisterUser {
     ) -> Self {
         Self {
             users,
+            settings,
             hasher,
             tokens,
             humans,
@@ -36,8 +39,9 @@ impl RegisterUser {
         }
     }
 
-    /// Validates the input, checks the captcha, ensures email and username
-    /// are free, stores the new member and returns an access token.
+    /// Validates the input, checks the captcha, ensures registrations are
+    /// open and email and username are free, stores the new member and
+    /// returns an access token.
     ///
     /// The captcha is verified before any storage access or password hashing.
     pub async fn execute(
@@ -47,6 +51,7 @@ impl RegisterUser {
     ) -> AppResult<AuthResponse> {
         input.validate()?;
         ensure_human(self.humans.as_ref(), &input.captcha_token, client_ip).await?;
+        self.settings.get().await?.ensure_registration_open()?;
         let username = Username::parse(&input.username)?;
         let email = Email::parse(&input.email)?;
 
@@ -75,7 +80,9 @@ mod tests {
         IssuedToken, MockHumanVerifier, MockPasswordHasher, MockTokenService,
     };
     use crate::application::test_support::{clock, human, now};
-    use crate::domain::{MockUserRepository, PasswordHash, Role};
+    use crate::domain::{
+        IdentitySettings, MockSettingsRepository, MockUserRepository, PasswordHash, Role,
+    };
 
     /// Returns a valid registration request.
     fn request() -> RegisterRequest {
@@ -104,14 +111,38 @@ mod tests {
         use_case_with(users, hasher, human(true))
     }
 
-    /// Builds the use case under test with the given captcha verifier.
+    /// Returns a settings repository mock with registrations `enabled`.
+    fn settings(enabled: bool) -> MockSettingsRepository {
+        let mut settings = MockSettingsRepository::new();
+        settings.expect_get().returning(move || {
+            Ok(IdentitySettings {
+                registration_enabled: enabled,
+                updated_at: None,
+            })
+        });
+        settings
+    }
+
+    /// Builds the use case under test with the given captcha verifier and
+    /// registrations open.
     fn use_case_with(
         users: MockUserRepository,
         hasher: MockPasswordHasher,
         humans: Arc<MockHumanVerifier>,
     ) -> RegisterUser {
+        build(users, settings(true), hasher, humans)
+    }
+
+    /// Builds the use case under test from all its mocks.
+    fn build(
+        users: MockUserRepository,
+        settings: MockSettingsRepository,
+        hasher: MockPasswordHasher,
+        humans: Arc<MockHumanVerifier>,
+    ) -> RegisterUser {
         RegisterUser::new(
             Arc::new(users),
+            Arc::new(settings),
             Arc::new(hasher),
             Arc::new(tokens()),
             humans,
@@ -201,6 +232,28 @@ mod tests {
             .unwrap_err();
 
         assert_eq!(error, AppError::field("username", "is already taken"));
+    }
+
+    #[tokio::test]
+    async fn rejects_registration_when_closed() {
+        let mut users = MockUserRepository::new();
+        users.expect_email_exists().times(0);
+        users.expect_create().times(0);
+
+        let error = build(
+            users,
+            settings(false),
+            MockPasswordHasher::new(),
+            human(true),
+        )
+        .execute(request(), None)
+        .await
+        .unwrap_err();
+
+        assert_eq!(
+            error,
+            AppError::Forbidden("registration is disabled".into())
+        );
     }
 
     #[tokio::test]

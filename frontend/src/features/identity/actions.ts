@@ -8,9 +8,11 @@ import { field, type FormState, toFormState } from "@/lib/forms";
 import type { AuthResponse } from "@/types/api/identity/AuthResponse";
 import type { BanUserRequest } from "@/types/api/identity/BanUserRequest";
 import type { ChangeRoleRequest } from "@/types/api/identity/ChangeRoleRequest";
+import type { IdentitySettingsDto } from "@/types/api/identity/IdentitySettingsDto";
 import type { LoginRequest } from "@/types/api/identity/LoginRequest";
 import type { RegisterRequest } from "@/types/api/identity/RegisterRequest";
 import type { RoleDto } from "@/types/api/identity/RoleDto";
+import type { UpdateIdentitySettingsRequest } from "@/types/api/identity/UpdateIdentitySettingsRequest";
 import type { UserDto } from "@/types/api/identity/UserDto";
 
 import { clientIp } from "./client-ip";
@@ -102,4 +104,20 @@ export async function unbanUser(id: string): Promise<FormState> {
 
   revalidatePath("/dashboard/users");
   return { success: true, message: "User unbanned." };
+}
+
+/** Opens or closes registrations (checkbox `registration_enabled`). */
+export async function updateIdentitySettings(_: FormState, data: FormData): Promise<FormState> {
+  const body: UpdateIdentitySettingsRequest = {
+    registration_enabled: data.get("registration_enabled") === "on",
+  };
+
+  try {
+    await apiFetch<IdentitySettingsDto>("/api/admin/settings/identity", { method: "PUT", body, auth: true });
+  } catch (error) {
+    return toFormState(error);
+  }
+
+  revalidatePath("/dashboard/settings");
+  return { success: true, message: "Settings saved." };
 }

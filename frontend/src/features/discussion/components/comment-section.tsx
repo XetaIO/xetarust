@@ -19,10 +19,12 @@ interface CommentSectionProps {
     comments: CommentDto[];
     /** Logged-in reader, `null` for visitors. */
     viewer: CommentViewer | null;
+    /** Whether visitors can create an account (provided by the page). */
+    canRegister: boolean;
 }
 
 /** Comments of an article; members can post, authors and admins can delete. */
-export function CommentSection({ slug, comments, viewer }: CommentSectionProps) {
+export function CommentSection({ slug, comments, viewer, canRegister }: CommentSectionProps) {
     return (
         <section aria-labelledby="comments" className="mt-12 border-t border-white/10 pt-8 sm:mt-16 sm:pt-10">
             <h2 id="comments" className="text-2xl font-semibold">
@@ -63,10 +65,17 @@ export function CommentSection({ slug, comments, viewer }: CommentSectionProps) 
                         <Link href={`/login?next=/blog/${slug}`} className="text-brand-orange hover:underline">
                             Log in
                         </Link>{" "}
-                        or{" "}
-                        <Link href={`/register?next=/blog/${slug}`} className="text-brand-orange hover:underline">
-                            create an account
-                        </Link>{" "}
+                        {canRegister && (
+                            <>
+                                or{" "}
+                                <Link
+                                    href={`/register?next=/blog/${slug}`}
+                                    className="text-brand-orange hover:underline"
+                                >
+                                    create an account
+                                </Link>{" "}
+                            </>
+                        )}
                         to join the discussion.
                     </p>
                 )}

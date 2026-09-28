@@ -8,9 +8,12 @@ use chrono::{SubsecRound, Utc};
 use migration::testing::{test_database, unique};
 use sea_orm::DatabaseConnection;
 use xetaravel_identity::domain::{
-    BanReason, Email, PasswordHash, Role, User, UserId, UserRepository, Username,
+    BanReason, Email, IdentitySettings, PasswordHash, Role, SettingsRepository, User, UserId,
+    UserRepository, Username,
 };
-use xetaravel_identity::infrastructure::persistence::SeaOrmUserRepository;
+use xetaravel_identity::infrastructure::persistence::{
+    SeaOrmSettingsRepository, SeaOrmUserRepository,
+};
 use xetaravel_kernel::DomainError;
 use xetaravel_kernel::pagination::PageRequest;
 
@@ -119,4 +122,20 @@ async fn user_repository_persists_bans() {
     let reloaded = repo.find_by_id(user.id).await.unwrap().unwrap();
     assert!(!reloaded.is_banned());
     assert_eq!(reloaded, user);
+}
+
+#[tokio::test]
+async fn settings_repository_round_trip() {
+    let repo = SeaOrmSettingsRepository::new(test_database().await);
+    assert!(repo.get().await.unwrap().registration_enabled);
+
+    let mut settings = IdentitySettings::defaults();
+    settings.set_registration(false, now());
+    repo.save(&settings).await.unwrap();
+    assert_eq!(repo.get().await.unwrap(), settings);
+
+    // The test database is shared: always leave registrations open.
+    settings.set_registration(true, now());
+    repo.save(&settings).await.unwrap();
+    assert_eq!(repo.get().await.unwrap(), settings);
 }

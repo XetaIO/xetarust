@@ -9,11 +9,11 @@ use xetaravel_kernel::{Clock, PrincipalResolver};
 use crate::application::contract::IdentityDirectory;
 use crate::application::ports::{HumanVerifier, PasswordHasher, TokenService};
 use crate::application::use_cases::{
-    Authenticate, BanUser, ChangeUserRole, GetCurrentUser, GetPublicProfiles, ListUsers, LoginUser,
-    RegisterUser, UnbanUser,
+    Authenticate, BanUser, ChangeUserRole, GetCurrentUser, GetIdentitySettings, GetPublicProfiles,
+    ListUsers, LoginUser, RegisterUser, UnbanUser, UpdateIdentitySettings,
 };
-use crate::domain::UserRepository;
-use crate::infrastructure::persistence::SeaOrmUserRepository;
+use crate::domain::{SettingsRepository, UserRepository};
+use crate::infrastructure::persistence::{SeaOrmSettingsRepository, SeaOrmUserRepository};
 use crate::infrastructure::security::{
     Argon2PasswordHasher, CaptchaSettings, JwtSettings, JwtTokenService, TurnstileHumanVerifier,
 };
@@ -29,6 +29,8 @@ pub struct IdentityModule {
     pub change_user_role: ChangeUserRole,
     pub ban_user: BanUser,
     pub unban_user: UnbanUser,
+    pub identity_settings: GetIdentitySettings,
+    pub update_identity_settings: UpdateIdentitySettings,
     authenticate: Arc<Authenticate>,
     public_profiles: Arc<GetPublicProfiles>,
 }
@@ -42,7 +44,8 @@ impl IdentityModule {
         captcha: &CaptchaSettings,
         clock: Arc<dyn Clock>,
     ) -> Self {
-        let users: Arc<dyn UserRepository> = Arc::new(SeaOrmUserRepository::new(db));
+        let users: Arc<dyn UserRepository> = Arc::new(SeaOrmUserRepository::new(db.clone()));
+        let settings: Arc<dyn SettingsRepository> = Arc::new(SeaOrmSettingsRepository::new(db));
         let hasher: Arc<dyn PasswordHasher> = Arc::new(Argon2PasswordHasher);
         let tokens: Arc<dyn TokenService> = Arc::new(JwtTokenService::new(jwt, clock.clone()));
         let humans: Arc<dyn HumanVerifier> = Arc::new(TurnstileHumanVerifier::new(
@@ -53,6 +56,7 @@ impl IdentityModule {
         Self {
             register: RegisterUser::new(
                 users.clone(),
+                settings.clone(),
                 hasher.clone(),
                 tokens.clone(),
                 humans.clone(),
@@ -63,7 +67,9 @@ impl IdentityModule {
             list_users: ListUsers::new(users.clone()),
             change_user_role: ChangeUserRole::new(users.clone(), clock.clone()),
             ban_user: BanUser::new(users.clone(), clock.clone()),
-            unban_user: UnbanUser::new(users.clone(), clock),
+            unban_user: UnbanUser::new(users.clone(), clock.clone()),
+            identity_settings: GetIdentitySettings::new(settings.clone()),
+            update_identity_settings: UpdateIdentitySettings::new(settings, clock),
             authenticate: Arc::new(Authenticate::new(users.clone(), tokens)),
             public_profiles: Arc::new(GetPublicProfiles::new(users)),
         }
