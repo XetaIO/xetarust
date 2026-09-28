@@ -13,7 +13,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   postgres_test:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     container_name: xetaravel_postgres_test
     restart: unless-stopped
     environment:
