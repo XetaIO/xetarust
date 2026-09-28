@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use axum::Router;
 use axum::extract::FromRef;
-use axum::routing::{get, patch, post};
+use axum::routing::{get, patch, post, put};
 use xetaravel_kernel::PrincipalResolver;
 
 use crate::IdentityModule;
@@ -47,4 +47,8 @@ where
         .route("/api/auth/me", get(auth::me))
         .route("/api/admin/users", get(admin::list_users))
         .route("/api/admin/users/{id}/role", patch(admin::change_user_role))
+        .route(
+            "/api/admin/users/{id}/ban",
+            put(admin::ban_user).delete(admin::unban_user),
+        )
 }

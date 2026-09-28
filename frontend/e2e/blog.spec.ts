@@ -98,3 +98,37 @@ test("admin publishes an article and a member comments it", async ({ browser }) 
   const response = await member.goto("/dashboard");
   expect(response?.status()).toBe(404);
 });
+
+test("admin bans a member from the dashboard", async ({ browser }) => {
+  const id = unique();
+
+  const adminContext = await browser.newContext();
+  const admin = await adminContext.newPage();
+  promoteToAdmin(await register(admin, `admin_${id}`));
+
+  const memberContext = await browser.newContext();
+  const member = await memberContext.newPage();
+  const memberEmail = await register(member, `member_${id}`);
+  await expect(member.getByRole("button", { name: "Log out" })).toBeVisible();
+
+  // --- Admin: bans the member with a reason and purges their comments.
+  await admin.goto("/dashboard/users");
+  const row = admin.getByRole("row", { name: new RegExp(`member_${id}`) });
+  await row.getByRole("button", { name: "Ban" }).click();
+  const dialog = admin.getByRole("alertdialog");
+  await dialog.getByLabel("Reason (optional)").fill("Spam");
+  await dialog.getByLabel("Also delete their comments (permanent)").check();
+  await dialog.getByRole("button", { name: "Ban" }).click();
+  await expect(admin.getByText("User banned. 0 comment(s) deleted.")).toBeVisible();
+  await expect(row.getByText("banned", { exact: true })).toBeVisible();
+
+  // --- Member: logged out on the next page load, and cannot log in again.
+  await member.reload();
+  await expect(member.getByRole("button", { name: "Log out" })).toHaveCount(0);
+
+  await member.goto("/login");
+  await member.getByLabel("Email").fill(memberEmail);
+  await member.getByLabel("Password").fill("super-secret");
+  await member.getByRole("button", { name: "Log in" }).click();
+  await expect(member.getByText("Your account has been banned: Spam")).toBeVisible();
+});

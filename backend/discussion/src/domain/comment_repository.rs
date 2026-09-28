@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use xetaravel_kernel::DomainResult;
 
-use super::{ArticleId, Comment, CommentId};
+use super::{ArticleId, AuthorId, Comment, CommentId};
 
 /// Persistence port of the [`Comment`] aggregate.
 #[cfg_attr(test, mockall::automock)]
@@ -18,4 +18,7 @@ pub trait CommentRepository: Send + Sync {
 
     /// Deletes a comment. Returns `false` when it did not exist.
     async fn delete(&self, id: CommentId) -> DomainResult<bool>;
+
+    /// Deletes every comment written by `author_id`. Returns how many were deleted.
+    async fn delete_by_author(&self, author_id: AuthorId) -> DomainResult<u64>;
 }

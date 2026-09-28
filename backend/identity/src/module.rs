@@ -9,8 +9,8 @@ use xetaravel_kernel::{Clock, PrincipalResolver};
 use crate::application::contract::IdentityDirectory;
 use crate::application::ports::{HumanVerifier, PasswordHasher, TokenService};
 use crate::application::use_cases::{
-    Authenticate, ChangeUserRole, GetCurrentUser, GetPublicProfiles, ListUsers, LoginUser,
-    RegisterUser,
+    Authenticate, BanUser, ChangeUserRole, GetCurrentUser, GetPublicProfiles, ListUsers, LoginUser,
+    RegisterUser, UnbanUser,
 };
 use crate::domain::UserRepository;
 use crate::infrastructure::persistence::SeaOrmUserRepository;
@@ -27,6 +27,8 @@ pub struct IdentityModule {
     pub current_user: GetCurrentUser,
     pub list_users: ListUsers,
     pub change_user_role: ChangeUserRole,
+    pub ban_user: BanUser,
+    pub unban_user: UnbanUser,
     authenticate: Arc<Authenticate>,
     public_profiles: Arc<GetPublicProfiles>,
 }
@@ -59,7 +61,9 @@ impl IdentityModule {
             login: LoginUser::new(users.clone(), hasher, tokens.clone(), humans),
             current_user: GetCurrentUser::new(users.clone()),
             list_users: ListUsers::new(users.clone()),
-            change_user_role: ChangeUserRole::new(users.clone(), clock),
+            change_user_role: ChangeUserRole::new(users.clone(), clock.clone()),
+            ban_user: BanUser::new(users.clone(), clock.clone()),
+            unban_user: UnbanUser::new(users.clone(), clock),
             authenticate: Arc::new(Authenticate::new(users.clone(), tokens)),
             public_profiles: Arc::new(GetPublicProfiles::new(users)),
         }

@@ -8,7 +8,7 @@ use chrono::{SubsecRound, Utc};
 use migration::testing::{test_database, unique};
 use sea_orm::DatabaseConnection;
 use xetaravel_identity::domain::{
-    Email, PasswordHash, Role, User, UserId, UserRepository, Username,
+    BanReason, Email, PasswordHash, Role, User, UserId, UserRepository, Username,
 };
 use xetaravel_identity::infrastructure::persistence::SeaOrmUserRepository;
 use xetaravel_kernel::DomainError;
@@ -95,4 +95,28 @@ async fn user_repository_reports_duplicates_as_conflicts() {
         .unwrap_err();
 
     assert!(matches!(error, DomainError::Conflict(_)));
+}
+
+#[tokio::test]
+async fn user_repository_persists_bans() {
+    let db = test_database().await;
+    let repo = SeaOrmUserRepository::new(db.clone());
+    let mut user = create_user(&db).await;
+
+    let reason = Some(BanReason::parse("spam").unwrap());
+    user.ban(reason, UserId::generate(), Role::Admin, now())
+        .unwrap();
+    repo.update(&user).await.unwrap();
+    assert_eq!(repo.find_by_id(user.id).await.unwrap(), Some(user.clone()));
+
+    user.ban(None, UserId::generate(), Role::Admin, now())
+        .unwrap();
+    repo.update(&user).await.unwrap();
+    assert_eq!(repo.find_by_id(user.id).await.unwrap(), Some(user.clone()));
+
+    user.unban(Role::Admin, now()).unwrap();
+    repo.update(&user).await.unwrap();
+    let reloaded = repo.find_by_id(user.id).await.unwrap().unwrap();
+    assert!(!reloaded.is_banned());
+    assert_eq!(reloaded, user);
 }

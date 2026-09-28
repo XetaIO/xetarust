@@ -48,3 +48,29 @@ async fn comment_repository_round_trip() {
     delete_article(&db, article).await;
     assert_eq!(repo.find_by_id(second.id).await.unwrap(), None);
 }
+
+#[tokio::test]
+async fn comment_repository_deletes_the_comments_of_an_author() {
+    let db = test_database().await;
+    let repo = SeaOrmCommentRepository::new(db.clone());
+    let (banned, other) = (seed_user(&db).await, seed_user(&db).await);
+    let (article, _) = seed_published_article(&db, other).await;
+    let article_id = ArticleId::from(article);
+
+    let spam = Comment::post(article_id, AuthorId::from(banned), "Spam", now()).unwrap();
+    let more = Comment::post(article_id, AuthorId::from(banned), "More", now()).unwrap();
+    let kept = Comment::post(article_id, AuthorId::from(other), "Kept", now()).unwrap();
+    for comment in [&spam, &more, &kept] {
+        repo.create(comment).await.unwrap();
+    }
+
+    assert_eq!(
+        repo.delete_by_author(AuthorId::from(banned)).await.unwrap(),
+        2
+    );
+    assert_eq!(repo.list_by_article(article_id).await.unwrap(), [kept]);
+    assert_eq!(
+        repo.delete_by_author(AuthorId::from(banned)).await.unwrap(),
+        0
+    );
+}

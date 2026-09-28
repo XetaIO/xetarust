@@ -7,7 +7,7 @@ use xetaravel_kernel::DomainResult;
 use xetaravel_kernel::persistence::db_error;
 
 use super::entity as comment;
-use crate::domain::{ArticleId, Comment, CommentId, CommentRepository};
+use crate::domain::{ArticleId, AuthorId, Comment, CommentId, CommentRepository};
 
 /// PostgreSQL implementation of [`CommentRepository`].
 #[derive(Clone)]
@@ -87,5 +87,15 @@ impl CommentRepository for SeaOrmCommentRepository {
             .await
             .map_err(db_error)?;
         Ok(result.rows_affected > 0)
+    }
+
+    /// Deletes every comment written by `author_id`; returns how many were deleted.
+    async fn delete_by_author(&self, author_id: AuthorId) -> DomainResult<u64> {
+        let result = comment::Entity::delete_many()
+            .filter(comment::Column::AuthorId.eq(author_id.as_uuid()))
+            .exec(&self.db)
+            .await
+            .map_err(db_error)?;
+        Ok(result.rows_affected)
     }
 }

@@ -12,6 +12,8 @@ use crate::domain::{Email, UserRepository};
 /// Message returned for every failed login, so attackers cannot tell
 /// whether an email is registered.
 const INVALID_CREDENTIALS: &str = "invalid credentials";
+/// Message returned (after a valid password) when the account is banned.
+const BANNED: &str = "your account has been banned";
 
 /// Exchanges an email/password pair for an access token.
 pub struct LoginUser {
@@ -63,6 +65,13 @@ impl LoginUser {
         {
             return Err(Self::invalid_credentials());
         }
+        // Checked after the password so nothing leaks without it.
+        if let Some(ban) = &user.ban {
+            return Err(AppError::Forbidden(match &ban.reason {
+                Some(reason) => format!("{BANNED}: {reason}"),
+                None => BANNED.into(),
+            }));
+        }
 
         authenticated_response(self.tokens.as_ref(), &user)
     }
@@ -82,7 +91,7 @@ mod tests {
         IssuedToken, MockHumanVerifier, MockPasswordHasher, MockTokenService,
     };
     use crate::application::test_support::{human, now, user};
-    use crate::domain::{MockUserRepository, Role};
+    use crate::domain::{BanReason, MockUserRepository, Role, UserId};
 
     /// Returns a login request for `email`.
     fn request(email: &str) -> LoginRequest {
@@ -195,5 +204,48 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.user.username, "john");
+    }
+
+    /// Returns a repository mock knowing `john`, banned with `reason`.
+    fn users_with_banned_john(reason: Option<&str>) -> MockUserRepository {
+        let mut john = user("john", Role::Member);
+        let reason = reason.map(|r| BanReason::parse(r).unwrap());
+        john.ban(reason, UserId::generate(), Role::Admin, now())
+            .unwrap();
+        let mut users = MockUserRepository::new();
+        users
+            .expect_find_by_email()
+            .returning(move |_| Ok(Some(john.clone())));
+        users
+    }
+
+    #[tokio::test]
+    async fn rejects_banned_users_with_the_reason() {
+        let error = use_case(users_with_banned_john(Some("spam")), hasher(true))
+            .execute(request("john@example.com"), None)
+            .await
+            .unwrap_err();
+
+        assert_eq!(error, AppError::Forbidden(format!("{BANNED}: spam")));
+    }
+
+    #[tokio::test]
+    async fn rejects_banned_users_without_reason() {
+        let error = use_case(users_with_banned_john(None), hasher(true))
+            .execute(request("john@example.com"), None)
+            .await
+            .unwrap_err();
+
+        assert_eq!(error, AppError::Forbidden(BANNED.into()));
+    }
+
+    #[tokio::test]
+    async fn a_wrong_password_hides_the_ban() {
+        let error = use_case(users_with_banned_john(Some("spam")), hasher(false))
+            .execute(request("john@example.com"), None)
+            .await
+            .unwrap_err();
+
+        assert_eq!(error, AppError::Unauthorized(INVALID_CREDENTIALS.into()));
     }
 }

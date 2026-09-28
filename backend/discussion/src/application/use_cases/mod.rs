@@ -1,10 +1,12 @@
 //! Use cases of the Discussion context. Each use case is a struct holding its
 //! dependencies as `Arc<dyn Port>` and exposing a single `execute` method.
 
+mod delete_author_comments;
 mod delete_comment;
 mod list_comments;
 mod post_comment;
 
+pub use delete_author_comments::DeleteAuthorComments;
 pub use delete_comment::DeleteComment;
 pub use list_comments::ListComments;
 pub use post_comment::PostComment;

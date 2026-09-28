@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { apiFetch } from "@/lib/api/client";
 import { field, type FormState, toFormState } from "@/lib/forms";
 import type { AuthResponse } from "@/types/api/identity/AuthResponse";
+import type { BanUserRequest } from "@/types/api/identity/BanUserRequest";
 import type { ChangeRoleRequest } from "@/types/api/identity/ChangeRoleRequest";
 import type { LoginRequest } from "@/types/api/identity/LoginRequest";
 import type { RegisterRequest } from "@/types/api/identity/RegisterRequest";
@@ -75,4 +76,30 @@ export async function changeUserRole(id: string, role: RoleDto): Promise<FormSta
 
   revalidatePath("/dashboard/users");
   return { success: true, message: `Role changed to ${role}.` };
+}
+
+/** Bans a user (or updates the reason of an existing ban). Blank reasons are sent as `null`. */
+export async function banUser(id: string, reason: string | null): Promise<FormState> {
+  const body: BanUserRequest = { reason };
+
+  try {
+    await apiFetch<UserDto>(`/api/admin/users/${id}/ban`, { method: "PUT", body, auth: true });
+  } catch (error) {
+    return toFormState(error);
+  }
+
+  revalidatePath("/dashboard/users");
+  return { success: true, message: "User banned." };
+}
+
+/** Lifts the ban of a user. */
+export async function unbanUser(id: string): Promise<FormState> {
+  try {
+    await apiFetch<UserDto>(`/api/admin/users/${id}/ban`, { method: "DELETE", auth: true });
+  } catch (error) {
+    return toFormState(error);
+  }
+
+  revalidatePath("/dashboard/users");
+  return { success: true, message: "User unbanned." };
 }

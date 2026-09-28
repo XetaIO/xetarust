@@ -9,7 +9,9 @@
 | POST | `/api/auth/login` | public, captcha, rate limit IP | Identity | `LoginUser` → `AuthResponse` (429 `too_many_requests`) |
 | GET | `/api/auth/me` | membre | Identity | `GetCurrentUser` → `UserDto` |
 | GET | `/api/admin/users?page&per_page` | admin | Identity | `ListUsers` |
-| PATCH | `/api/admin/users/{id}/role` | admin | Identity | `ChangeUserRole` (auto-rétrogradation interdite) |
+| PATCH | `/api/admin/users/{id}/role` | admin | Identity | `ChangeUserRole` (auto-rétrogradation interdite, promotion d'un banni interdite) |
+| PUT / DELETE | `/api/admin/users/{id}/ban` | admin | Identity | `BanUser` (corps `BanUserRequest { reason? }`) / `UnbanUser` → `UserDto` |
+| DELETE | `/api/admin/users/{id}/comments` | admin | Discussion | `DeleteAuthorComments` → `DeletedCommentsDto { deleted }` |
 | GET | `/api/articles?page&per_page&category` | public | Publishing | `ListPublishedArticles` → `Paginated<ArticleSummaryDto>` |
 | GET | `/api/articles/{slug}` | public | Publishing | `GetPublishedArticle` → `ArticleDto` |
 | GET | `/api/categories` | public | Publishing | `ListCategories` → `CategoryDto[]` |
@@ -31,6 +33,9 @@ Pagination : `page` commence à 1, `per_page` ∈ [1, 50] (10 par défaut).
 - Mot de passe 8–128 caractères, haché en Argon2id.
 - Login et register exigent `captcha_token` (réponse du widget Cloudflare Turnstile), vérifié **avant** tout accès base ou calcul Argon2 (port `HumanVerifier`) ; échec → 422 sur le champ `captcha_token`. Captcha obligatoire (l'API refuse de démarrer sans `TURNSTILE_SECRET`, Next.js sans `NEXT_PUBLIC_TURNSTILE_SITE_KEY`) ; clés de test Cloudflare en dev/e2e.
 - Login et register sont limités par IP (`tower_governor`, seau commun aux deux routes) : `AUTH_RATE_LIMIT_BURST` tentatives (5), puis une toutes les `AUTH_RATE_LIMIT_PERIOD_SECONDS` (12 s) → 429 `too_many_requests`. L'IP vient de `X-Forwarded-For` posé par Next.js : l'API ne doit être joignable que par Next (`APP_ADDR=127.0.0.1:8080`).
+- **Bannissement** (Identity, `User::ban` / `User::unban`) : permanent jusqu'à levée manuelle, motif optionnel (trimé, vide → aucun, 255 caractères max, value object `BanReason`). Seul un admin bannit ; pas d'auto-ban ; un admin n'est pas bannissable (le rétrograder d'abord) ; un banni ne peut pas être promu. Re-bannir met à jour le motif (date conservée) ; débannir un compte non banni ne fait rien. Colonnes `users.banned_at` / `users.ban_reason`.
+- Un banni reçoit **401** sur toute route authentifiée (`Authenticate` relit l'utilisateur à chaque requête, effet immédiat même avec un JWT valide) et **403** au login avec le motif (`your account has been banned: <motif>`), uniquement après un mot de passe correct. En lecture publique il redevient un simple visiteur.
+- Supprimer les commentaires d'un banni est une action distincte (Discussion) : la page `/dashboard/users` enchaîne ban puis purge (`app/dashboard/users/actions.ts`), sans dépendance Identity → Discussion.
 - Slug d'article/catégorie dérivé du titre/nom si vide, modifiable, unique ; conservé lors d'une édition sans slug.
 - Un article republié garde sa première date de publication.
 - Une catégorie contenant des articles ne peut pas être supprimée.

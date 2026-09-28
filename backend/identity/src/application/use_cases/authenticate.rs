@@ -9,8 +9,8 @@ use crate::domain::UserRepository;
 
 /// Resolves a bearer token into the [`Principal`] performing a request.
 ///
-/// The user is reloaded from storage so a role change (or a deleted account)
-/// takes effect immediately, even if the token is still valid. This use case
+/// The user is reloaded from storage so a role change, a ban or a deleted
+/// account takes effect immediately, even if the token is still valid. This use case
 /// is the Identity implementation of the kernel [`PrincipalResolver`] port.
 pub struct Authenticate {
     users: Arc<dyn UserRepository>,
@@ -31,6 +31,9 @@ impl Authenticate {
             .find_by_id(user_id)
             .await?
             .ok_or_else(|| AppError::Unauthorized("unknown user".into()))?;
+        if user.is_banned() {
+            return Err(AppError::Unauthorized("account banned".into()));
+        }
 
         Ok(principal_of(&user))
     }
@@ -48,7 +51,7 @@ impl PrincipalResolver for Authenticate {
 mod tests {
     use super::*;
     use crate::application::ports::MockTokenService;
-    use crate::application::test_support::user;
+    use crate::application::test_support::{now, user};
     use crate::domain::{MockUserRepository, Role, UserId};
 
     #[tokio::test]
@@ -99,5 +102,27 @@ mod tests {
             .unwrap_err();
 
         assert!(matches!(error, AppError::Unauthorized(_)));
+    }
+
+    #[tokio::test]
+    async fn rejects_tokens_of_banned_users() {
+        let mut banned = user("john", Role::Member);
+        banned
+            .ban(None, UserId::generate(), Role::Admin, now())
+            .unwrap();
+        let banned_id = banned.id;
+        let mut tokens = MockTokenService::new();
+        tokens.expect_verify().returning(move |_| Ok(banned_id));
+        let mut users = MockUserRepository::new();
+        users
+            .expect_find_by_id()
+            .returning(move |_| Ok(Some(banned.clone())));
+
+        let error = Authenticate::new(Arc::new(users), Arc::new(tokens))
+            .execute("jwt")
+            .await
+            .unwrap_err();
+
+        assert_eq!(error, AppError::Unauthorized("account banned".into()));
     }
 }

@@ -3,8 +3,9 @@ use std::sync::Arc;
 use uuid::Uuid;
 use xetaravel_kernel::{AppError, AppResult, Clock, Principal};
 
+use super::actor_role;
 use crate::application::dto::{ChangeRoleRequest, UserDto};
-use crate::domain::{Role, UserId, UserRepository};
+use crate::domain::{UserId, UserRepository};
 
 /// Promotes a member to admin or demotes an admin to member.
 pub struct ChangeUserRole {
@@ -32,15 +33,10 @@ impl ChangeUserRole {
             .await?
             .ok_or_else(|| AppError::NotFound("user not found".into()))?;
 
-        let actor_role = if principal.is_admin {
-            Role::Admin
-        } else {
-            Role::Member
-        };
         user.change_role(
             input.role.into(),
             UserId::from(principal.user_id),
-            actor_role,
+            actor_role(&principal),
             self.clock.now(),
         )?;
         self.users.update(&user).await?;
@@ -54,7 +50,7 @@ mod tests {
     use super::*;
     use crate::application::dto::RoleDto;
     use crate::application::test_support::{admin_principal, clock, principal_of, user};
-    use crate::domain::MockUserRepository;
+    use crate::domain::{MockUserRepository, Role};
 
     #[tokio::test]
     async fn promotes_a_member() {

@@ -4,4 +4,12 @@ import type { RoleDto } from "./RoleDto";
 /**
  * Private view of an account (current user, administration).
  */
-export type UserDto = { id: string; username: string; email: string; role: RoleDto; created_at: string };
+export type UserDto = {
+  id: string;
+  username: string;
+  email: string;
+  role: RoleDto;
+  created_at: string;
+  banned_at: string | null;
+  ban_reason: string | null;
+};

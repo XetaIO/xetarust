@@ -96,6 +96,8 @@ pub struct UserDto {
     pub email: String,
     pub role: RoleDto,
     pub created_at: DateTime<Utc>,
+    pub banned_at: Option<DateTime<Utc>>,
+    pub ban_reason: Option<String>,
 }
 
 impl From<&User> for UserDto {
@@ -107,6 +109,12 @@ impl From<&User> for UserDto {
             email: user.email.to_string(),
             role: user.role.into(),
             created_at: user.created_at,
+            banned_at: user.ban.as_ref().map(|ban| ban.banned_at),
+            ban_reason: user
+                .ban
+                .as_ref()
+                .and_then(|ban| ban.reason.as_ref())
+                .map(ToString::to_string),
         }
     }
 }
@@ -116,4 +124,15 @@ impl From<&User> for UserDto {
 #[ts(export, export_to = "identity/")]
 pub struct ChangeRoleRequest {
     pub role: RoleDto,
+}
+
+/// Body of `PUT /api/admin/users/{id}/ban`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Validate, TS)]
+#[ts(export, export_to = "identity/")]
+pub struct BanUserRequest {
+    /// Optional reason, shown in the dashboard and to the banned user at login.
+    #[serde(default)]
+    #[ts(optional = nullable)]
+    #[validate(length(max = 255, message = "must contain at most 255 characters"))]
+    pub reason: Option<String>,
 }

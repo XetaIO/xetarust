@@ -190,13 +190,6 @@ export const profile = {
         "Contributed to process improvement initiatives and supported team efficiency",
       ],
     },
-    {
-      role: "Full-stack Developer",
-      company: "Self-employed",
-      period: "2016 — Present",
-      kind: "Autodidact",
-      highlights: ["Design and development of personal and open-source projects"],
-    },
   ] as Experience[],
   education: [
     {

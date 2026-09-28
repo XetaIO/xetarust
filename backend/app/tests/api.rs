@@ -625,6 +625,148 @@ async fn admin_changes_roles() {
 }
 
 #[tokio::test]
+async fn admin_bans_a_member() {
+    let app = TestApp::start().await;
+    let admin = app.register_admin().await;
+    let article = app.publish_article(&admin).await;
+    let comments_uri = format!(
+        "/api/articles/{}/comments",
+        article["slug"].as_str().unwrap()
+    );
+    let (member, email) = app.register().await;
+    let (_, me) = app
+        .call(Method::GET, "/api/auth/me", Some(&member), None)
+        .await;
+    let member_id = me["id"].as_str().unwrap();
+    let ban_uri = format!("/api/admin/users/{member_id}/ban");
+    let login =
+        json!({ "email": email, "password": "super-secret", "captcha_token": CAPTCHA_TOKEN });
+
+    // 1. The member comments.
+    let comment = json!({ "content": "Buy cheap stuff!" });
+    let (status, _) = app
+        .call(
+            Method::POST,
+            &comments_uri,
+            Some(&member),
+            Some(comment.clone()),
+        )
+        .await;
+    assert_eq!(status, StatusCode::CREATED);
+
+    // 2. The admin bans them with a reason.
+    let (status, banned) = app
+        .call(
+            Method::PUT,
+            &ban_uri,
+            Some(&admin),
+            Some(json!({ "reason": " Spam " })),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{banned}");
+    assert!(banned["banned_at"].is_string());
+    assert_eq!(banned["ban_reason"], "Spam");
+
+    // 3. Their still valid token no longer works anywhere.
+    let (status, _) = app
+        .call(Method::GET, "/api/auth/me", Some(&member), None)
+        .await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    let (status, _) = app
+        .call(Method::POST, &comments_uri, Some(&member), Some(comment))
+        .await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+
+    // 4. Logging in is refused with the reason.
+    let (status, body) = app
+        .call(Method::POST, "/api/auth/login", None, Some(login.clone()))
+        .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert_eq!(body["message"], "your account has been banned: Spam");
+
+    // 5. The admin purges their comments.
+    let (status, purge) = app
+        .call(
+            Method::DELETE,
+            &format!("/api/admin/users/{member_id}/comments"),
+            Some(&admin),
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{purge}");
+    assert_eq!(purge["deleted"], 1);
+    let (_, remaining) = app.call(Method::GET, &comments_uri, None, None).await;
+    assert!(remaining.as_array().unwrap().is_empty());
+
+    // 6. Once unbanned, the member can log in again.
+    let (status, unbanned) = app.call(Method::DELETE, &ban_uri, Some(&admin), None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(unbanned["banned_at"].is_null());
+    let (status, _) = app
+        .call(Method::POST, "/api/auth/login", None, Some(login))
+        .await;
+    assert_eq!(status, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn bans_are_restricted() {
+    let app = TestApp::start().await;
+    let admin = app.register_admin().await;
+    let other_admin = app.register_admin().await;
+    let (member, _) = app.register().await;
+    let id_of = async |token: &str| {
+        let (_, me) = app
+            .call(Method::GET, "/api/auth/me", Some(token), None)
+            .await;
+        me["id"].as_str().unwrap().to_owned()
+    };
+    let (admin_id, other_admin_id) = (id_of(&admin).await, id_of(&other_admin).await);
+    let ban = Some(json!({ "reason": null }));
+
+    // An admin can neither ban another admin nor themselves.
+    for target in [&other_admin_id, &admin_id] {
+        let (status, _) = app
+            .call(
+                Method::PUT,
+                &format!("/api/admin/users/{target}/ban"),
+                Some(&admin),
+                ban.clone(),
+            )
+            .await;
+        assert_eq!(status, StatusCode::FORBIDDEN);
+    }
+
+    // A member cannot call the moderation routes.
+    let (status, _) = app
+        .call(
+            Method::PUT,
+            &format!("/api/admin/users/{admin_id}/ban"),
+            Some(&member),
+            ban,
+        )
+        .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    let (status, _) = app
+        .call(
+            Method::DELETE,
+            &format!("/api/admin/users/{admin_id}/ban"),
+            Some(&member),
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    let (status, _) = app
+        .call(
+            Method::DELETE,
+            &format!("/api/admin/users/{admin_id}/comments"),
+            Some(&member),
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
 async fn malformed_requests_get_json_errors() {
     let app = TestApp::start().await;
     let admin = app.register_admin().await;

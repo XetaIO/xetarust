@@ -12,14 +12,14 @@ frontend/src/
 │   ├── page.tsx                accueil statique animé
 │   ├── (auth)/login|register   formulaires d'auth
 │   ├── blog/                   liste, catégories, article + commentaires (dynamique)
-│   └── dashboard/              admin (layout = requireAdmin())
+│   └── dashboard/              admin (layout = requireAdmin()) ; users/actions.ts = banMember (ban Identity + purge Discussion)
 ├── features/
 │   ├── identity/               session.ts (storeSession, clearSession, getCurrentUser, requireUser, requireAdmin),
-│   │                           redirect.ts, client-ip.ts (clientIp, relayé en X-Forwarded-For), actions.ts (login, register, logout, changeUserRole),
-│   │                           queries.ts (getUsers), components/{auth-form (widget Turnstile), role-toggle}
+│   │                           redirect.ts, client-ip.ts (clientIp, relayé en X-Forwarded-For), actions.ts (login, register, logout, changeUserRole, banUser, unbanUser),
+│   │                           queries.ts (getUsers), components/{auth-form (widget Turnstile), role-toggle, ban-dialog (reçoit l'action de ban en prop)}
 │   ├── publishing/             queries.ts (articles, catégories, admin), actions.ts (saveArticle, deleteArticle, saveCategory, deleteCategory),
 │   │                           cover.ts (coverUrl), components/{article-card, article-cover, article-list, category-nav, markdown, article-form, category-form}
-│   └── discussion/             queries.ts (getComments), actions.ts (postComment, deleteComment),
+│   └── discussion/             queries.ts (getComments), actions.ts (postComment, deleteComment, deleteAuthorComments),
 │                               components/{comment-form, comment-section}
 ├── lib/
 │   ├── api/client.ts           apiFetch() server-only, ajoute le Bearer depuis le cookie ; apiUpload() (PUT octets bruts) ; apiProxy() (relaie une réponse binaire publique)
@@ -36,6 +36,7 @@ frontend/src/
 ## Règles
 
 - **Frontières** : une feature n'importe jamais une autre feature ni les types `types/api/<autre contexte>/` (ESLint `no-restricted-imports`, `eslint.config.mjs`). Elle peut importer `lib/`, `components/` et `types/api/shared/`. Les routes `app/**` composent : ex. `app/blog/[slug]/page.tsx` lit l'utilisateur via Identity et passe un `CommentViewer { id, isAdmin }` à `CommentSection` (Discussion).
+- Une action qui combine plusieurs contextes vit **dans la route** (`app/<route>/actions.ts`, `"use server"`) et appelle les actions des features : ex. `banMember` (`app/dashboard/users/actions.ts`) = `banUser` puis, si demandé, `deleteAuthorComments`. Le composant de la feature reçoit l'action composée en prop (`BanDialog action={banMember.bind(null, id)}`).
 - **Lecture** : Server Components qui appellent `features/<contexte>/queries.ts`. **Écriture** : Server Actions dans `features/<contexte>/actions.ts`, jamais de `fetch` vers l'API depuis le navigateur.
 - Tout module qui touche au cookie ou à l'API importe `"server-only"`.
 - Server Action type : lire le `FormData` → construire le DTO typé (`@/types/api/<contexte>/...`) → `apiFetch` dans un `try` → `toFormState(error)` en cas d'erreur 4xx → `revalidatePath` → `redirect` **hors du try**.

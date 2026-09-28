@@ -12,6 +12,8 @@ pub struct Model {
     pub email: String,
     pub password_hash: String,
     pub role: UserRole,
+    pub banned_at: Option<DateTimeUtc>,
+    pub ban_reason: Option<String>,
     pub created_at: DateTimeUtc,
     pub updated_at: DateTimeUtc,
 }

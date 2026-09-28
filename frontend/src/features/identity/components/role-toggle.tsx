@@ -12,10 +12,12 @@ interface RoleToggleProps {
     role: RoleDto;
     /** True for the current admin, who cannot demote themselves. */
     isSelf: boolean;
+    /** True for a banned account, which cannot be promoted. */
+    isBanned?: boolean;
 }
 
 /** Button promoting a member to admin, or demoting an admin to member. */
-export function RoleToggle({ userId, role, isSelf }: RoleToggleProps) {
+export function RoleToggle({ userId, role, isSelf, isBanned = false }: RoleToggleProps) {
     const [pending, startTransition] = useTransition();
     const target: RoleDto = role === "admin" ? "member" : "admin";
 
@@ -35,9 +37,9 @@ export function RoleToggle({ userId, role, isSelf }: RoleToggleProps) {
         <Button
             variant={role === "admin" ? "outline" : "default"}
             size="sm"
-            disabled={pending || isSelf}
+            disabled={pending || isSelf || isBanned}
             onClick={toggle}
-            title={isSelf ? "You cannot demote yourself" : undefined}
+            title={isSelf ? "You cannot demote yourself" : isBanned ? "Unban this user first" : undefined}
         >
             {role === "admin" ? "Demote to member" : "Promote to admin"}
         </Button>

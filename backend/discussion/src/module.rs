@@ -7,7 +7,9 @@ use sea_orm::DatabaseConnection;
 use xetaravel_kernel::Clock;
 
 use crate::application::ports::{ArticleCatalog, AuthorDirectory};
-use crate::application::use_cases::{DeleteComment, ListComments, PostComment};
+use crate::application::use_cases::{
+    DeleteAuthorComments, DeleteComment, ListComments, PostComment,
+};
 use crate::domain::CommentRepository;
 use crate::infrastructure::persistence::SeaOrmCommentRepository;
 
@@ -16,6 +18,7 @@ pub struct DiscussionModule {
     pub list_comments: ListComments,
     pub post_comment: PostComment,
     pub delete_comment: DeleteComment,
+    pub delete_author_comments: DeleteAuthorComments,
 }
 
 impl DiscussionModule {
@@ -33,7 +36,8 @@ impl DiscussionModule {
         Self {
             list_comments: ListComments::new(comments.clone(), articles.clone(), authors.clone()),
             post_comment: PostComment::new(comments.clone(), articles, authors, clock),
-            delete_comment: DeleteComment::new(comments),
+            delete_comment: DeleteComment::new(comments.clone()),
+            delete_author_comments: DeleteAuthorComments::new(comments),
         }
     }
 }

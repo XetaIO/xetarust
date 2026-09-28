@@ -60,11 +60,11 @@ export function CommentSection({ slug, comments, viewer }: CommentSectionProps) 
                     <CommentForm slug={slug} />
                 ) : (
                     <p className="rounded-2xl border border-dashed border-white/10 p-4 text-center text-muted-foreground sm:p-6">
-                        <Link href={`/login?next=/blog/${slug}`} className="text-brand-amber hover:underline">
+                        <Link href={`/login?next=/blog/${slug}`} className="text-brand-orange hover:underline">
                             Log in
                         </Link>{" "}
                         or{" "}
-                        <Link href={`/register?next=/blog/${slug}`} className="text-brand-amber hover:underline">
+                        <Link href={`/register?next=/blog/${slug}`} className="text-brand-orange hover:underline">
                             create an account
                         </Link>{" "}
                         to join the discussion.

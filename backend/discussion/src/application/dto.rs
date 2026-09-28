@@ -49,3 +49,11 @@ pub struct CreateCommentRequest {
     ))]
     pub content: String,
 }
+
+/// Returned by `DELETE /api/admin/users/{id}/comments`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "discussion/")]
+pub struct DeletedCommentsDto {
+    /// Number of comments deleted.
+    pub deleted: u64,
+}
