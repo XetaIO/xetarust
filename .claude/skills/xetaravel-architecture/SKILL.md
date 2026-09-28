@@ -169,6 +169,8 @@ cargo run -p migration -- up                  # migrations (aussi appliquées au
 cargo run -p xetaravel-app                    # API sur 127.0.0.1:8080 (binaire `xetaravel`)
 
 cargo test --workspace                        # tous les tests (dont architecture) + régénération des types TS
+cargo cov                                     # couverture (cargo-llvm-cov) : résumé par fichier
+cargo cov --html                              # rapport HTML dans target/llvm-cov/html/
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all
 

@@ -54,9 +54,34 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
       - uses: Swatinem/rust-cache@v2
-      # Unit, persistence, HTTP and architecture tests.
-      - run: cargo test --workspace
+      - uses: taiki-e/install-action@cargo-llvm-cov
+      # Unit, persistence, HTTP and architecture tests, run once and
+      # instrumented for coverage (the `cov` alias of .cargo/config.toml).
+      - run: cargo cov --no-report
+      # Reports built from the same data, without running the tests again.
+      # Report only: no coverage threshold fails the job.
+      - name: Coverage reports
+        run: |
+          cargo cov-report --html
+          cargo cov-report --lcov --output-path target/lcov.info
+          {
+            echo '## Backend coverage'
+            echo '```'
+            cargo cov-report --summary-only
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: |
+            target/llvm-cov/html
+            target/lcov.info
+          retention-days: 14
 
   frontend:
     name: Frontend · lint, typecheck & build

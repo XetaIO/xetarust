@@ -79,4 +79,16 @@ cargo test --workspace                # includes architecture guards; regenerate
 cd frontend && npm run lint && npm run typecheck && npm run build && npm run test:e2e
 ```
 
+Backend test coverage (cargo-llvm-cov, aliases in `.cargo/config.toml`):
+
+```bash
+rustup component add llvm-tools-preview && cargo install cargo-llvm-cov --locked   # once
+docker compose up -d                  # postgres_test is required
+cargo cov                             # per-file summary in the terminal
+cargo cov --html                      # target/llvm-cov/html/index.html
+cargo cov --lcov --output-path target/lcov.info   # for an editor extension (Coverage Gutters…)
+```
+
+Migrations, binaries, test code and SeaORM entities are excluded; the CI publishes the report as the `backend-coverage` artifact.
+
 Architecture and development rules: [`.claude/skills/xetaravel-architecture/SKILL.md`](.claude/skills/xetaravel-architecture/SKILL.md).

@@ -52,6 +52,29 @@ async fn rejects_duplicated_slug() {
 
 Un nouveau contexte doit être ajouté à `CONTEXTS` dans ce fichier.
 
+## Couverture
+
+- Outil : [`cargo-llvm-cov`](https://github.com/taiki-e/cargo-llvm-cov) sur la toolchain stable. Prérequis, une fois : `rustup component add llvm-tools-preview` puis `cargo install cargo-llvm-cov --locked` ; `postgres_test` doit tourner (`docker compose up -d`).
+- Alias de `.cargo/config.toml` (partagés local / CI), les arguments supplémentaires s'y ajoutent :
+  - `cargo cov` — lance tous les tests instrumentés et affiche un résumé par fichier ;
+  - `cargo cov --html` — rapport navigable dans `target/llvm-cov/html/index.html` ;
+  - `cargo cov --lcov --output-path target/lcov.info` — pour une extension d'éditeur (Coverage Gutters…) ;
+  - `cargo cov --no-report` puis `cargo cov-report …` — produire plusieurs rapports sans relancer les tests.
+- Exclusions (`--ignore-filename-regex`, séparateurs `[\\/]` pour Windows et Linux) :
+
+| Code exclu | Pourquoi |
+|---|---|
+| crate `backend/migration/` | agrégateur de schéma, CLI et outillage de test |
+| `*/infrastructure/migrations/` | DDL déclaratif, exécuté une fois |
+| `main.rs` | bootstrap / CLI, non testable unitairement |
+| `*/tests/` | code de test (`api.rs`, `architecture.rs`, `persistence.rs`) |
+| `application/test_support.rs` | fixtures de test |
+| `persistence/entity.rs`, `persistence/entities/` | entités SeaORM, code généré par les derives |
+
+- Limite : sur stable, les modules `#[cfg(test)] mod tests` inline ne peuvent pas être exclus ; ils restent comptés et la couverture est donc légèrement surévaluée. Ne pas modifier les sources pour contourner cette limite.
+- CI (job `backend-test`) : les tests ne tournent qu'une fois via `cargo cov --no-report` ; le résumé s'affiche dans le récapitulatif du run et l'artefact `backend-coverage` (HTML + `lcov.info`, 14 jours) est publié. Aucun seuil : le job n'échoue que si un test échoue.
+- Pour un nouveau type de fichier non pertinent, compléter la regex **dans les deux alias** `cov` et `cov-report`.
+
 ## E2E
 
 - Prérequis : API démarrée (`cargo run -p xetaravel-app`) ; Playwright lance `npm run dev` si besoin. Clés de test Turnstile dans `.env` (`TURNSTILE_SECRET=1x0000000000000000000000000000000AA`) et `frontend/.env.local` (`NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA`) : le widget de test se valide seul, les vraies clés bloquent un navigateur headless.
