@@ -19,12 +19,39 @@ export async function generateMetadata({ params }: PageProps<"/blog/[slug]">): P
     if (!article) {
         return {};
     }
+
+    const url = `https://xetaravel.com/blog/${article.slug}`;
+    const image = article.cover_image ? coverUrl(article.cover_image) : "/og-image.png";
+
     return {
         title: article.title,
         description: article.excerpt ?? undefined,
-        openGraph: article.cover_image
-            ? { images: [{ url: coverUrl(article.cover_image), alt: article.title }] }
-            : undefined,
+        alternates: {
+            canonical: url,
+        },
+        openGraph: {
+            type: "article",
+            url,
+            siteName: "Xetaravel",
+            title: article.title,
+            description: article.excerpt ?? undefined,
+            publishedTime: article.published_at ?? undefined,
+            modifiedTime: article.updated_at,
+            authors: [article.author.username],
+            images: [
+                {
+                    url: image,
+                    alt: article.title,
+                },
+            ],
+        },
+
+        twitter: {
+            card: "summary_large_image",
+            title: article.title,
+            description: article.excerpt ?? undefined,
+            images: [image],
+        },
     };
 }
 
