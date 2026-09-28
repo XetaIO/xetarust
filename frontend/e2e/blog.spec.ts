@@ -94,6 +94,18 @@ test("admin publishes an article and a member comments it", async ({ browser }) 
   await member.getByRole("button", { name: "Post comment" }).click();
   await expect(member.getByText("Great article!")).toBeVisible();
 
+  // --- Admin: closes the comments; existing ones stay visible, the form disappears.
+  await admin.goto("/dashboard/articles");
+  await admin.getByRole("row", { name: new RegExp(title) }).getByRole("link", { name: "Edit" }).click();
+  await admin.getByLabel("Allow comments").uncheck();
+  await admin.getByRole("button", { name: "Save changes" }).click();
+  await expect(admin).toHaveURL(/\/dashboard\/articles$/);
+
+  await member.reload();
+  await expect(member.getByText("Great article!")).toBeVisible();
+  await expect(member.getByText("Comments are closed on this article.")).toBeVisible();
+  await expect(member.getByRole("button", { name: "Post comment" })).toHaveCount(0);
+
   // Members cannot open the dashboard.
   const response = await member.goto("/dashboard");
   expect(response?.status()).toBe(404);

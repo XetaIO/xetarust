@@ -29,7 +29,7 @@ Le backend est découpé en **trois bounded contexts**, un crate chacun ; l'hexa
 | ---------- | --------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------ |
 | Identity   | `backend/identity` (`xetaravel-identity`)     | Identité, authentification, autorisation | `User`, `UserId`, `Email`, `Username`, `PasswordHash`, `Role`, `Ban`, `IdentitySettings`  |
 | Publishing | `backend/publishing` (`xetaravel-publishing`) | Création et publication du contenu       | `Article`, `ArticleDraft`, `Category`, `ArticleId`, `CategoryId`, `AuthorId`, `Slug` |
-| Discussion | `backend/discussion` (`xetaravel-discussion`) | Interactions autour du contenu           | `Comment`, `CommentId`, `ArticleId` et `AuthorId` **locaux**                         |
+| Discussion | `backend/discussion` (`xetaravel-discussion`) | Interactions autour du contenu           | `Comment`, `CommentId`, `CommentableArticle`, `ArticleId` et `AuthorId` **locaux**   |
 
 ```
 backend/

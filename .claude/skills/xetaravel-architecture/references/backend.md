@@ -120,9 +120,11 @@ Le consommateur exprime son besoin **dans son langage** ; le fournisseur expose 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait ArticleCatalog: Send + Sync {
-    /// Returns the id of the published article using `slug`, if any.
-    async fn published_article_id(&self, slug: &str) -> AppResult<Option<ArticleId>>;
+    /// Returns the published article using `slug`, if any.
+    async fn published_article(&self, slug: &str) -> AppResult<Option<CommentableArticle>>;
 }
+// discussion/src/domain/commentable_article.rs — read model local :
+// CommentableArticle { id: ArticleId, comments_open: bool } + ensure_open()
 
 // publishing/src/application/contract.rs — contrat public de Publishing
 #[async_trait]
@@ -134,9 +136,12 @@ pub trait PublishedArticles: Send + Sync {
 // app/src/integration/articles.rs — ACL
 #[async_trait]
 impl xetaravel_discussion::ArticleCatalog for PublishingArticleCatalog {
-    /// Translates the published article reference into a Discussion id.
-    async fn published_article_id(&self, slug: &str) -> AppResult<Option<ArticleId>> {
-        Ok(self.articles.find_published(slug).await?.map(|a| ArticleId::from(a.id)))
+    /// Translates the published article reference into a Discussion commentable article.
+    async fn published_article(&self, slug: &str) -> AppResult<Option<CommentableArticle>> {
+        Ok(self.articles.find_published(slug).await?.map(|a| CommentableArticle {
+            id: ArticleId::from(a.id),
+            comments_open: a.comments_enabled,
+        }))
     }
 }
 ```

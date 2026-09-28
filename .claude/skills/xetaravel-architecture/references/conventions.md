@@ -24,7 +24,7 @@
 | POST | `/api/admin/categories` | admin | Publishing | `CreateCategory` |
 | PUT / DELETE | `/api/admin/categories/{id}` | admin | Publishing | `UpdateCategory` / `DeleteCategory` (409 si non vide) |
 | GET | `/api/articles/{slug}/comments` | public | Discussion | `ListComments` → `CommentDto[]` |
-| POST | `/api/articles/{slug}/comments` | membre | Discussion | `PostComment` → 201 `CommentDto` |
+| POST | `/api/articles/{slug}/comments` | membre | Discussion | `PostComment` → 201 `CommentDto` (403 si commentaires fermés) |
 | DELETE | `/api/comments/{id}` | auteur ou admin | Discussion | `DeleteComment` → 204 |
 
 Pagination : `page` commence à 1, `per_page` ∈ [1, 50] (10 par défaut).
@@ -43,6 +43,7 @@ Pagination : `page` commence à 1, `per_page` ∈ [1, 50] (10 par défaut).
 - Un article republié garde sa première date de publication.
 - Une catégorie contenant des articles ne peut pas être supprimée.
 - Seuls les articles publiés peuvent être commentés (Discussion interroge Publishing).
+- **Commentaires fermés par article** (`articles.comments_enabled`, ouverts par défaut, case « Allow comments » du formulaire d'article) : `POST /api/articles/{slug}/comments` → **403** `forbidden` (`comments are closed on this article`), vérifié après la validation et la résolution de l'article (brouillon → 404) ; la lecture reste toujours possible. Règle portée par `CommentableArticle::ensure_open` (Discussion).
 - Supprimer un article supprime ses commentaires (cascade SQL `comments.article_id → articles`).
 - Image de couverture : format détecté par magic bytes (JPEG/PNG/WebP), 5 Mo max, stockée sur disque (`UPLOADS_DIR/covers`, port `CoverStorage`) sous un nom `<uuid v7>.<ext>` régénéré à chaque upload ; l'ancien fichier est supprimé au remplacement, au retrait et à la suppression de l'article.
 
