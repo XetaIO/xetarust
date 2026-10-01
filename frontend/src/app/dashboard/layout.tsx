@@ -6,7 +6,11 @@ import { requireAdmin } from "@/features/identity/session";
 
 export const metadata: Metadata = { title: { default: "Dashboard", template: "%s · Dashboard" } };
 
-/** Admin-only layout: the Rust API confirms the session and the admin role. */
+/**
+ * Admin-only layout: the Rust API confirms the session and the admin role.
+ * Layouts render in parallel with their page and are not re-rendered on
+ * client navigation, so every dashboard page also calls `requireAdmin()`.
+ */
 export default async function DashboardLayout({ children }: LayoutProps<"/dashboard">) {
     await requireAdmin();
 

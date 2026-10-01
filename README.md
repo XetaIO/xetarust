@@ -88,7 +88,7 @@ frontend/src/features/
 
 |                                                   Rust                                                    |                                                         Node.js                                                          |                                                       Docker                                                        |
 | :-------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------: |
-| ![Rust](<https://img.shields.io/badge/Rust-stable%20(2024%20edition)-dea584?style=flat-square&logo=rust>) | ![Node.js](https://img.shields.io/badge/Node.js-LTS%20%2B%20npm-339933?style=flat-square&logo=nodedotjs&logoColor=white) | ![Docker](https://img.shields.io/badge/Docker-PostgreSQL%2017-2496ed?style=flat-square&logo=docker&logoColor=white) |
+| ![Rust](<https://img.shields.io/badge/Rust-stable%20(2024%20edition)-dea584?style=flat-square&logo=rust>) | ![Node.js](https://img.shields.io/badge/Node.js-LTS%20%2B%20npm-339933?style=flat-square&logo=nodedotjs&logoColor=white) | ![Docker](https://img.shields.io/badge/Docker-PostgreSQL%2018-2496ed?style=flat-square&logo=docker&logoColor=white) |
 
 ### Installation
 

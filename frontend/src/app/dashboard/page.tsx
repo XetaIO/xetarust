@@ -5,17 +5,17 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getUsers } from "@/features/identity/queries";
-import { getCurrentUser } from "@/features/identity/session";
+import { requireAdmin } from "@/features/identity/session";
 import { getAdminArticles, getCategories } from "@/features/publishing/queries";
 import { formatDate } from "@/lib/format";
 
 /** Dashboard overview: counters and latest articles. */
 export default async function DashboardPage() {
-    const [articles, categories, users, me] = await Promise.all([
+    const me = await requireAdmin();
+    const [articles, categories, users] = await Promise.all([
         getAdminArticles({ per_page: 5 }),
         getCategories(),
         getUsers({ per_page: 1 }),
-        getCurrentUser(),
     ]);
 
     const stats = [
@@ -27,7 +27,7 @@ export default async function DashboardPage() {
     return (
         <>
             <PageHeader
-                title={`Hello, ${me?.username ?? "admin"}`}
+                title={`Hello, ${me.username}`}
                 description="Here is what is happening on your site."
                 actions={
                     <Link href="/dashboard/articles/new" className={buttonVariants()}>

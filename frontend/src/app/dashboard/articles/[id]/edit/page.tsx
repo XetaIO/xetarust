@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/dashboard/page-header";
 import { buttonVariants } from "@/components/ui/button";
+import { requireAdmin } from "@/features/identity/session";
 import { ArticleForm } from "@/features/publishing/components/article-form";
 import { getAdminArticle, getCategories } from "@/features/publishing/queries";
 import { Eye } from "lucide-react";
@@ -12,6 +13,7 @@ export const metadata: Metadata = { title: "Edit article" };
 
 /** Page to edit an existing article (`?cover_error` shows a cover rejected at creation). */
 export default async function EditArticlePage({ params, searchParams }: PageProps<"/dashboard/articles/[id]/edit">) {
+    await requireAdmin();
     const { id } = await params;
     const { cover_error: coverError } = await searchParams;
     const [article, categories] = await Promise.all([getAdminArticle(id), getCategories()]);

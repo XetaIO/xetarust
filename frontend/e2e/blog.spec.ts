@@ -116,9 +116,11 @@ test("admin publishes an article and a member comments it", async ({ browser }) 
   await expect(member.getByText("Comments are closed on this article.")).toBeVisible();
   await expect(member.getByRole("button", { name: "Post comment" })).toHaveCount(0);
 
-  // Members cannot open the dashboard.
-  const response = await member.goto("/dashboard");
-  expect(response?.status()).toBe(404);
+  // Members cannot open the dashboard: every page checks the admin role itself.
+  for (const path of ["/dashboard", "/dashboard/articles/new", "/dashboard/users", "/dashboard/settings"]) {
+    const response = await member.goto(path);
+    expect(response?.status(), path).toBe(404);
+  }
 });
 
 test("admin bans a member from the dashboard", async ({ browser }) => {

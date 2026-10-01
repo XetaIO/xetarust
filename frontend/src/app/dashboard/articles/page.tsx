@@ -8,6 +8,7 @@ import { Pagination } from "@/components/site/pagination";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { requireAdmin } from "@/features/identity/session";
 import { deleteArticle } from "@/features/publishing/actions";
 import { getAdminArticles } from "@/features/publishing/queries";
 import { formatDate, parsePage } from "@/lib/format";
@@ -16,6 +17,7 @@ export const metadata: Metadata = { title: "Articles" };
 
 /** List of every article, drafts included. */
 export default async function DashboardArticlesPage({ searchParams }: PageProps<"/dashboard/articles">) {
+    await requireAdmin();
     const page = parsePage((await searchParams).page);
     const articles = await getAdminArticles({ page, per_page: 20 });
 

@@ -12,7 +12,7 @@ frontend/src/
 │   ├── page.tsx                accueil statique animé
 │   ├── (auth)/login|register   formulaires d'auth
 │   ├── blog/                   liste, catégories, article + commentaires (dynamique)
-│   └── dashboard/              admin (layout = requireAdmin()) ; users/actions.ts = banMember (ban Identity + purge Discussion) ;
+│   └── dashboard/              admin (layout **et chaque page** = requireAdmin()) ; users/actions.ts = banMember (ban Identity + purge Discussion) ;
 │                               settings/ = page de composition des réglages (une carte par contexte, aujourd'hui Identity)
 ├── features/
 │   ├── identity/               session.ts (storeSession, clearSession, getCurrentUser, requireUser, requireAdmin),
@@ -47,7 +47,7 @@ frontend/src/
 - Server Action type : lire le `FormData` → construire le DTO typé (`@/types/api/<contexte>/...`) → `apiFetch` dans un `try` → `toFormState(error)` en cas d'erreur 4xx → `revalidatePath` → `redirect` **hors du try**.
 - Formulaires : `useActionState` + `FieldError` / `FormMessage` pour afficher `fields` renvoyés par l'API. Les messages de validation viennent du backend (source de vérité).
 - Suppressions : composant `ConfirmAction` (AlertDialog + toast) avec une Server Action liée (`action.bind(null, id)`).
-- L'autorisation réelle est faite par l'API Rust ; `proxy.ts` et `requireAdmin()` ne sont que du confort UX (404 pour les membres sur `/dashboard`).
+- L'autorisation réelle est faite par l'API Rust ; `proxy.ts` et `requireAdmin()` ne sont que du confort UX (404 pour les membres sur `/dashboard`). Une page du dashboard appelle **elle-même** `await requireAdmin()` avant ses requêtes : le layout est rendu en parallèle de la page (sinon un membre déclenche des appels admin → 403 dans les logs) et n'est pas re-rendu lors d'une navigation client. `getCurrentUser` est mémoïsé (`cache`) : un seul `/api/auth/me` par requête.
 - **Médias** : les images servies par l'API (couvertures d'articles) passent par le route handler `app/media/covers/[name]/route.ts` (`apiProxy`) ; utiliser `coverUrl(name)` (`features/publishing/cover.ts`) avec `next/image`, qui optimise (tailles, WebP/AVIF). Les chemins optimisables sont listés dans `images.localPatterns` (`next.config.ts`). L'upload passe par la Server Action `saveArticle` (`bodySizeLimit: "6mb"`).
 - La page d'accueil doit rester **statique** (pas de `cookies()` ni d'appel API) ; le header avec session n'est utilisé que dans blog/auth/dashboard.
 

@@ -10,7 +10,7 @@ import { unbanUser } from "@/features/identity/actions";
 import { BanDialog } from "@/features/identity/components/ban-dialog";
 import { RoleToggle } from "@/features/identity/components/role-toggle";
 import { getUsers } from "@/features/identity/queries";
-import { getCurrentUser } from "@/features/identity/session";
+import { requireAdmin } from "@/features/identity/session";
 import { formatDate, parsePage } from "@/lib/format";
 
 import { banMember } from "./actions";
@@ -19,8 +19,9 @@ export const metadata: Metadata = { title: "Users" };
 
 /** Registered users, their roles and bans. */
 export default async function UsersPage({ searchParams }: PageProps<"/dashboard/users">) {
+    const me = await requireAdmin();
     const page = parsePage((await searchParams).page);
-    const [users, me] = await Promise.all([getUsers({ page, per_page: 20 }), getCurrentUser()]);
+    const users = await getUsers({ page, per_page: 20 });
 
     return (
         <>
@@ -38,7 +39,7 @@ export default async function UsersPage({ searchParams }: PageProps<"/dashboard/
                     </TableHeader>
                     <TableBody>
                         {users.items.map((user) => {
-                            const isSelf = user.id === me?.id;
+                            const isSelf = user.id === me.id;
                             const isBanned = user.banned_at !== null;
 
                             return (

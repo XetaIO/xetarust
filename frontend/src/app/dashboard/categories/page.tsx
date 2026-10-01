@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { ConfirmAction } from "@/components/forms/confirm-action";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireAdmin } from "@/features/identity/session";
 import { deleteCategory } from "@/features/publishing/actions";
 import { CategoryForm } from "@/features/publishing/components/category-form";
 import { getCategories } from "@/features/publishing/queries";
@@ -12,6 +13,7 @@ export const metadata: Metadata = { title: "Categories" };
 
 /** Management of the blog categories. */
 export default async function CategoriesPage() {
+    await requireAdmin();
     const categories = await getCategories();
 
     return (
