@@ -73,7 +73,8 @@ backend/
 frontend/src/features/
 ├── identity/
 ├── publishing/
-└── discussion/
+├── discussion/
+└── resume/
 ```
 
 - Contexts depend **only** on `kernel`, never on each other; only `app` knows them all. This is enforced
@@ -137,6 +138,7 @@ Every variable is documented in [`.env.example`](.env.example) and
 
 | Variable                                                   | Purpose                                               |
 | ---------------------------------------------------------- | ----------------------------------------------------- |
+| `CORS_ORIGIN`                                              | Mandatory: exact origin of the Next.js site (CORS)    |
 | `JWT_TTL_SECONDS`                                          | JWT lifetime (default 7 days)                         |
 | `AUTH_RATE_LIMIT_BURST` / `AUTH_RATE_LIMIT_PERIOD_SECONDS` | Per-IP rate limit of login / register                 |
 | `COMMENT_DOUBLE_POST_HOURS` / `COMMENT_COOLDOWN_MINUTES`   | Comment anti-flood                                    |

@@ -3,7 +3,7 @@ import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
 /** Bounded contexts of the backend, mirrored by `src/features/*`. */
-const FEATURES = ["identity", "publishing", "discussion"];
+const FEATURES = ["identity", "publishing", "discussion", "resume"];
 
 /**
  * A feature never imports another feature (nor its API types): features are

@@ -161,7 +161,7 @@ Liste des routes et formats : [`references/conventions.md`](references/conventio
 
 ## 7. Frontend organisé par feature
 
-`frontend/src/features/{identity,publishing,discussion}/` reflète les contextes du backend (queries, actions, composants, types `types/api/<contexte>/`). **Une feature n'importe jamais une autre feature** (ni ses types) — règle ESLint `no-restricted-imports` ; les routes `src/app/**` les composent (ex. la page article passe un `CommentViewer` dérivé de l'utilisateur Identity à `CommentSection`). Détails : [`references/frontend.md`](references/frontend.md).
+`frontend/src/features/{identity,publishing,discussion,resume}/` reflète les contextes du backend (queries, actions, composants, types `types/api/<contexte>/`). **Une feature n'importe jamais une autre feature** (ni ses types) — règle ESLint `no-restricted-imports` ; les routes `src/app/**` les composent (ex. la page article passe un `CommentViewer` dérivé de l'utilisateur Identity à `CommentSection`). Ce dont plusieurs features ont besoin vit dans `src/lib/` (ex. `lib/client-ip.ts`). **Toute écriture déclenchée par le navigateur passe par une Server Action** (protection `Origin`/`Host` native de Next.js) ; les route handlers sont réservés aux GET publics (médias). Détails : [`references/frontend.md`](references/frontend.md).
 
 ## 8. Commandes
 

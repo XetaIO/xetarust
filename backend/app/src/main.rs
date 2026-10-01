@@ -7,11 +7,9 @@
 use std::net::SocketAddr;
 use std::process::ExitCode;
 
-use axum::http::{HeaderValue, Method, header};
 use migration::{Migrator, MigratorTrait};
 use sea_orm::DatabaseConnection;
 use tokio::net::TcpListener;
-use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
 use xetaravel_app::{AppState, Config, router};
@@ -64,18 +62,7 @@ async fn bootstrap() -> Result<(Config, AppState), Box<dyn std::error::Error>> {
 async fn serve() -> CliResult {
     let (config, state) = bootstrap().await?;
 
-    let cors = CorsLayer::new()
-        .allow_origin(config.cors_origin.parse::<HeaderValue>()?)
-        .allow_methods([
-            Method::GET,
-            Method::POST,
-            Method::PUT,
-            Method::PATCH,
-            Method::DELETE,
-        ])
-        .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE]);
-
-    let app = router(state).layer(cors).layer(TraceLayer::new_for_http());
+    let app = router(state).layer(TraceLayer::new_for_http());
 
     let listener = TcpListener::bind(&config.app_addr).await?;
     tracing::info!("listening on http://{}", config.app_addr);

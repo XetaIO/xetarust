@@ -12,7 +12,10 @@ use serde_json::{Value, json};
 use uuid::Uuid;
 use xetaravel_app::RateLimitSettings;
 
-use common::{CAPTCHA_TOKEN, TestApp, unique_ip};
+use common::{ALLOWED_ORIGIN, CAPTCHA_TOKEN, TestApp, unique_ip};
+
+/// Origin of a site that must never be allowed to read the API.
+const EVIL_ORIGIN: &str = "https://evil.example";
 
 /// Header of a PNG file: enough for the format detection.
 const PNG: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3];
@@ -852,4 +855,65 @@ async fn resume_download_requires_a_solved_captcha() {
 
     let (status, _) = app.call(Method::GET, "/api/cv", None, None).await;
     assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
+}
+
+/// Returns the header `name` of `headers` as a lowercase string (empty when absent).
+fn header_text(headers: &axum::http::HeaderMap, name: &str) -> String {
+    headers
+        .get_all(name)
+        .iter()
+        .filter_map(|value| value.to_str().ok())
+        .collect::<Vec<_>>()
+        .join(",")
+        .to_lowercase()
+}
+
+#[tokio::test]
+async fn cors_preflight_allows_the_configured_origin() {
+    let app = TestApp::start().await;
+    let (status, headers) = app
+        .preflight("/api/articles", ALLOWED_ORIGIN, Method::DELETE)
+        .await;
+
+    assert!(status.is_success(), "{status}");
+    assert_eq!(headers[header::ACCESS_CONTROL_ALLOW_ORIGIN], ALLOWED_ORIGIN);
+    assert!(header_text(&headers, "access-control-allow-methods").contains("delete"));
+    assert!(header_text(&headers, "access-control-allow-headers").contains("authorization"));
+}
+
+#[tokio::test]
+async fn cors_ignores_other_origins() {
+    let app = TestApp::start().await;
+
+    let (_, headers) = app
+        .preflight("/api/articles", EVIL_ORIGIN, Method::GET)
+        .await;
+    assert!(!headers.contains_key(header::ACCESS_CONTROL_ALLOW_ORIGIN));
+
+    let (status, headers) = app.get_with_origin("/api/articles", EVIL_ORIGIN).await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(!headers.contains_key(header::ACCESS_CONTROL_ALLOW_ORIGIN));
+}
+
+#[tokio::test]
+async fn cors_never_allows_credentials() {
+    let app = TestApp::start().await;
+
+    let (_, preflight) = app
+        .preflight("/api/articles", ALLOWED_ORIGIN, Method::POST)
+        .await;
+    let (_, response) = app.get_with_origin("/api/articles", ALLOWED_ORIGIN).await;
+
+    for headers in [preflight, response] {
+        assert!(!headers.contains_key(header::ACCESS_CONTROL_ALLOW_CREDENTIALS));
+    }
+}
+
+#[tokio::test]
+async fn cors_varies_on_origin() {
+    let app = TestApp::start().await;
+    let (_, headers) = app.get_with_origin("/api/articles", ALLOWED_ORIGIN).await;
+
+    assert_eq!(headers[header::ACCESS_CONTROL_ALLOW_ORIGIN], ALLOWED_ORIGIN);
+    assert!(header_text(&headers, "vary").contains("origin"));
 }

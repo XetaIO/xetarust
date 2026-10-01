@@ -4,7 +4,8 @@ import { headers } from "next/headers";
 
 /**
  * Returns the IP address of the visitor, forwarded to the Rust API for the
- * captcha check and the per-IP rate limit of login/register.
+ * captcha check and the per-IP rate limit of login/register and of the CV
+ * download.
  *
  * `x-real-ip` and `x-forwarded-for` are client-controlled by nature: in
  * production, the reverse proxy in front of Next.js must overwrite them with

@@ -6,13 +6,12 @@ import { useState } from "react";
 
 import { FormMessage } from "@/components/forms/field-error";
 
-/** Route handler relaying the CV download to the API (`src/app/cv/route.ts`). */
-const CV_ENDPOINT = "/cv";
+import { downloadResume, type ResumeDownload } from "../actions";
 
 /** Name given to the downloaded file. */
 const CV_FILENAME = "CV_Emeric_Fevre.pdf";
 
-/** Message shown when the endpoint fails without a readable JSON body. */
+/** Message shown when the download fails without an error message from the API. */
 const FALLBACK_ERROR = "the download failed, please try again";
 
 /**
@@ -23,27 +22,12 @@ const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
 type Status = "idle" | "verifying" | "downloading" | "error";
 
-/** JSON error returned by the API (only the parts shown to the visitor). */
-interface ApiErrorBody {
-    message?: unknown;
-    fields?: { captcha_token?: unknown };
-}
-
 /**
- * Reads an API error response: the `captcha_token` field error first, then
- * the global `message` (e.g. rate limit), falling back to a generic one.
+ * Reads a failed download: the `captcha_token` field error first, then the
+ * global `message` (e.g. rate limit), falling back to a generic one.
  */
-async function errorMessage(response: Response): Promise<string> {
-    try {
-        const body = (await response.json()) as ApiErrorBody;
-        const captcha = body.fields?.captcha_token;
-        if (Array.isArray(captcha) && typeof captcha[0] === "string") {
-            return captcha[0];
-        }
-        return typeof body.message === "string" ? body.message : FALLBACK_ERROR;
-    } catch {
-        return FALLBACK_ERROR;
-    }
+function errorMessage(result: Exclude<ResumeDownload, { pdf: Uint8Array<ArrayBuffer> }>): string {
+    return result?.fields?.captcha_token?.[0] ?? result?.message ?? FALLBACK_ERROR;
 }
 
 /** Makes the browser save `blob` under `filename` through a temporary link. */
@@ -70,16 +54,12 @@ export function CvDownload() {
     async function download(token: string) {
         setStatus("downloading");
         try {
-            const response = await fetch(CV_ENDPOINT, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ captcha_token: token }),
-            });
-            if (!response.ok) {
-                fail(await errorMessage(response));
+            const result = await downloadResume(token);
+            if (!result || !("pdf" in result)) {
+                fail(errorMessage(result));
                 return;
             }
-            saveBlob(await response.blob(), CV_FILENAME);
+            saveBlob(new Blob([result.pdf], { type: "application/pdf" }), CV_FILENAME);
             setMessage(undefined);
             setStatus("idle");
         } catch {

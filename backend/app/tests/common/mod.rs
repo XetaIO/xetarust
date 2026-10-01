@@ -9,7 +9,7 @@ use std::net::{IpAddr, Ipv6Addr};
 
 use axum::body::Body;
 use axum::body::Bytes;
-use axum::http::{HeaderMap, Method, Request, StatusCode, header};
+use axum::http::{HeaderMap, HeaderValue, Method, Request, StatusCode, header};
 use axum::routing::post;
 use axum::{Json, Router};
 use http_body_util::BodyExt;
@@ -29,6 +29,9 @@ pub const CAPTCHA_SECRET: &str = "test-secret";
 
 /// Captcha token the fake `siteverify` accepts.
 pub const CAPTCHA_TOKEN: &str = "valid";
+
+/// Origin of the Next.js site, the only one CORS lets a browser read from.
+pub const ALLOWED_ORIGIN: &str = "http://localhost:3000";
 
 /// Fake Cloudflare `siteverify`: succeeds only for [`CAPTCHA_TOKEN`] sent
 /// with [`CAPTCHA_SECRET`].
@@ -85,7 +88,7 @@ impl TestApp {
             auth_rate_limit,
             comment_throttle: CommentThrottle::default(),
             app_addr: "127.0.0.1:0".into(),
-            cors_origin: "http://localhost:3000".into(),
+            cors_origin: HeaderValue::from_static(ALLOWED_ORIGIN),
             uploads_dir: uploads.path().to_path_buf(),
         };
         let state = AppState::build(db.clone(), &config);
@@ -119,6 +122,46 @@ impl TestApp {
         let headers = response.headers().clone();
         let bytes = response.into_body().collect().await.unwrap().to_bytes();
         (status, headers, bytes)
+    }
+
+    /// Sends a CORS preflight (`OPTIONS`) for `method` on `uri` from the
+    /// browser `origin`, asking for the `Authorization` and `Content-Type`
+    /// headers; returns the status and the response headers.
+    pub async fn preflight(
+        &self,
+        uri: &str,
+        origin: &str,
+        method: Method,
+    ) -> (StatusCode, HeaderMap) {
+        let request = Request::builder()
+            .method(Method::OPTIONS)
+            .uri(uri)
+            .header(header::ORIGIN, origin)
+            .header(header::ACCESS_CONTROL_REQUEST_METHOD, method.as_str())
+            .header(
+                header::ACCESS_CONTROL_REQUEST_HEADERS,
+                "authorization,content-type",
+            )
+            .body(Body::empty())
+            .unwrap();
+
+        let response = self.router.clone().oneshot(request).await.unwrap();
+        (response.status(), response.headers().clone())
+    }
+
+    /// Sends a `GET` on `uri` from the browser `origin`; returns the status
+    /// and the response headers.
+    pub async fn get_with_origin(&self, uri: &str, origin: &str) -> (StatusCode, HeaderMap) {
+        let request = Request::builder()
+            .method(Method::GET)
+            .uri(uri)
+            .header("x-forwarded-for", unique_ip().to_string())
+            .header(header::ORIGIN, origin)
+            .body(Body::empty())
+            .unwrap();
+
+        let response = self.router.clone().oneshot(request).await.unwrap();
+        (response.status(), response.headers().clone())
     }
 
     /// Sends a JSON `body` from a unique client IP and returns the status,

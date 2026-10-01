@@ -3,7 +3,7 @@ import { ArrowUpRight, type LucideIcon, Mail } from "lucide-react";
 import { GithubIcon, LinkedinIcon, TwitterIcon } from "@/components/icons/brand-icons";
 import { profile, type SocialIcon } from "@/content/profile";
 
-import { CvDownload } from "./cv-download";
+import { CvDownload } from "@/features/resume/components/cv-download";
 import { Reveal } from "./reveal";
 
 /** Icon shown in front of each social link. */

@@ -198,7 +198,7 @@ async fn delete_comment(
 
 ## Composition root (`backend/app`)
 
-- `config.rs` : `Config::from_env()` (exige `TURNSTILE_SECRET` non vide ; inclut `JwtSettings` et `CaptchaSettings` d'Identity, `RateLimitSettings` des routes d'auth).
+- `config.rs` : `Config::from_env()` (exige `TURNSTILE_SECRET` non vide et `CORS_ORIGIN`, validé comme une origine exacte `http(s)://hôte[:port]` ; inclut `JwtSettings` et `CaptchaSettings` d'Identity, `RateLimitSettings` des routes d'auth).
 - `state.rs` : `AppState::build(db, &config)` construit `IdentityModule`, puis `PublishingModule` (avec `IdentityAuthorDirectory`), puis `DiscussionModule` (avec `PublishingArticleCatalog` + `IdentityAuthorDirectory`).
-- `router.rs` : `/api/health` + `merge` des routers des contextes ; `identity::auth_router()` (login, register) y reçoit le `GovernorLayer` (rate limit par IP, erreurs au format `ApiError`), `identity::account_router()` le reste.
-- `main.rs` : binaire `xetaravel` (serveur HTTP uniquement), applique les migrations au démarrage ; sert avec `into_make_service_with_connect_info::<SocketAddr>()`.
+- `router.rs` : `/api/health` + `merge` des routers des contextes ; `identity::auth_router()` (login, register) y reçoit le `GovernorLayer` (rate limit par IP, erreurs au format `ApiError`), `identity::account_router()` le reste ; la couche CORS (`AppState::cors_origin`) est appliquée à tout le router (testée dans `tests/api.rs`).
+- `main.rs` : binaire `xetaravel` (serveur HTTP uniquement, n'ajoute que `TraceLayer`), applique les migrations au démarrage ; sert avec `into_make_service_with_connect_info::<SocketAddr>()`.

@@ -4,6 +4,7 @@
 use std::sync::Arc;
 
 use axum::extract::FromRef;
+use axum::http::HeaderValue;
 use sea_orm::DatabaseConnection;
 use xetaravel_discussion::DiscussionModule;
 use xetaravel_identity::IdentityModule;
@@ -28,6 +29,8 @@ pub struct AppState {
     /// Per-IP rate limit applied by the router to the credential routes and
     /// to the resume download (the captcha-protected routes).
     pub auth_rate_limit: RateLimitSettings,
+    /// Only origin a browser may read the API from (CORS), applied by the router.
+    pub cors_origin: HeaderValue,
 }
 
 impl AppState {
@@ -74,6 +77,7 @@ impl AppState {
             discussion,
             resume,
             auth_rate_limit: config.auth_rate_limit,
+            cors_origin: config.cors_origin.clone(),
         }
     }
 }

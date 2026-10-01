@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { apiFetch } from "@/lib/api/client";
+import { clientIp } from "@/lib/client-ip";
 import { field, type FormState, toFormState } from "@/lib/forms";
 import type { AuthResponse } from "@/types/api/identity/AuthResponse";
 import type { BanUserRequest } from "@/types/api/identity/BanUserRequest";
@@ -15,7 +16,6 @@ import type { RoleDto } from "@/types/api/identity/RoleDto";
 import type { UpdateIdentitySettingsRequest } from "@/types/api/identity/UpdateIdentitySettingsRequest";
 import type { UserDto } from "@/types/api/identity/UserDto";
 
-import { clientIp } from "./client-ip";
 import { safeRedirectTarget } from "./redirect";
 import { clearSession, storeSession } from "./session";
 

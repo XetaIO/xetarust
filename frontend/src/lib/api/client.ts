@@ -85,6 +85,25 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
 }
 
 /**
+ * Calls the Rust API from the Next.js server and returns the raw bytes of a
+ * binary response (e.g. the CV as a PDF).
+ *
+ * @throws {ApiError} when the API answers with a non-2xx status (JSON body).
+ */
+export async function apiFetchBytes(path: string, options: ApiRequestOptions = {}): Promise<Uint8Array<ArrayBuffer>> {
+  const response = await fetch(
+    buildUrl(path, options.query),
+    await requestInit(options, "application/pdf, application/json"),
+  );
+
+  if (!response.ok) {
+    const data: unknown = await response.json().catch(() => null);
+    throw new ApiError(response.status, data as ConstructorParameters<typeof ApiError>[1]);
+  }
+  return new Uint8Array(await response.arrayBuffer());
+}
+
+/**
  * Sends a raw file to the Rust API with `PUT` (JWT forwarded from the session
  * cookie) and returns the parsed JSON.
  *
@@ -122,7 +141,7 @@ const PROXIED_HEADERS = [
 export type ApiProxyOptions = Pick<ApiRequestOptions, "method" | "body" | "clientIp">;
 
 /**
- * Relays a public, non-JSON API response (e.g. an image, the CV) to the
+ * Relays a public, non-JSON API response (e.g. an image) to the
  * browser: same status, body and content headers. JSON errors are relayed
  * unchanged. Used by route handlers so the browser never talks to the Rust
  * API directly.

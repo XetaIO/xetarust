@@ -3,6 +3,7 @@
 use std::env;
 use std::path::PathBuf;
 
+use axum::http::{HeaderValue, Uri};
 use chrono::Duration;
 use thiserror::Error;
 use xetaravel_discussion::CommentThrottle;
@@ -52,7 +53,9 @@ pub struct Config {
     /// Anti-flood policy of the members' comments.
     pub comment_throttle: CommentThrottle,
     pub app_addr: String,
-    pub cors_origin: String,
+    /// Exact origin of the Next.js site, the only one a browser may read the
+    /// API from (mandatory `CORS_ORIGIN`, validated).
+    pub cors_origin: HeaderValue,
     /// Root directory of the uploaded files (cover images...).
     pub uploads_dir: PathBuf,
 }
@@ -83,6 +86,13 @@ impl Config {
             ));
         }
 
+        let cors_origin = origin(&required("CORS_ORIGIN")?).ok_or_else(|| {
+            ConfigError::Invalid(
+                "CORS_ORIGIN",
+                "must be an origin such as https://example.com".into(),
+            )
+        })?;
+
         let ttl_seconds = positive(&lookup, "JWT_TTL_SECONDS")?.unwrap_or(7 * 24 * 3600);
         let defaults = RateLimitSettings::default();
         let throttle = CommentThrottle::default();
@@ -109,12 +119,27 @@ impl Config {
                     .map_or(throttle.cooldown, Duration::minutes),
             },
             app_addr: lookup("APP_ADDR").unwrap_or_else(|| "127.0.0.1:8080".into()),
-            cors_origin: lookup("CORS_ORIGIN").unwrap_or_else(|| "http://localhost:3000".into()),
+            cors_origin,
             uploads_dir: lookup("UPLOADS_DIR")
                 .unwrap_or_else(|| "storage/uploads".into())
                 .into(),
         })
     }
+}
+
+/// Parses `raw` as a single browser origin (`scheme://host[:port]`, scheme
+/// `http` or `https`). Anything else (wildcard, list, trailing slash, path,
+/// query) is rejected, since it would never match the `Origin` header.
+fn origin(raw: &str) -> Option<HeaderValue> {
+    let uri: Uri = raw.parse().ok()?;
+    let scheme = uri
+        .scheme_str()
+        .filter(|s| matches!(*s, "http" | "https"))?;
+    let authority = uri.authority()?;
+    if raw != format!("{scheme}://{authority}") {
+        return None;
+    }
+    HeaderValue::from_str(raw).ok()
 }
 
 /// Reads the optional variable `key` as a strictly positive integer.
@@ -153,10 +178,11 @@ mod tests {
     const SECRET: &str = "0123456789abcdef0123456789abcdef";
 
     /// Required variables every valid configuration contains.
-    const BASE: [(&str, &str); 3] = [
+    const BASE: [(&str, &str); 4] = [
         ("DATABASE_URL", "postgres://db"),
         ("JWT_SECRET", SECRET),
         ("TURNSTILE_SECRET", "turnstile"),
+        ("CORS_ORIGIN", "https://xetaravel.com"),
     ];
 
     /// Builds a lookup over [`BASE`] overridden by `extra`.
@@ -246,6 +272,45 @@ mod tests {
             Config::from_lookup(with_base(&[("TURNSTILE_SECRET", "")])).unwrap_err(),
             ConfigError::Invalid("TURNSTILE_SECRET", "must not be empty".into())
         );
+    }
+
+    #[test]
+    fn requires_the_cors_origin() {
+        assert_eq!(
+            Config::from_lookup(without("CORS_ORIGIN")).unwrap_err(),
+            ConfigError::Missing("CORS_ORIGIN")
+        );
+    }
+
+    #[test]
+    fn rejects_an_invalid_cors_origin() {
+        for value in [
+            "*",
+            "https://a.com,https://b.com",
+            "https://a.com/",
+            "https://a.com/blog",
+            "https://a.com?x=1",
+            "ftp://a.com",
+            "a.com",
+            "",
+        ] {
+            assert_eq!(
+                Config::from_lookup(with_base(&[("CORS_ORIGIN", value)])).unwrap_err(),
+                ConfigError::Invalid(
+                    "CORS_ORIGIN",
+                    "must be an origin such as https://example.com".into()
+                ),
+                "CORS_ORIGIN={value}"
+            );
+        }
+    }
+
+    #[test]
+    fn reads_the_cors_origin() {
+        for value in ["http://localhost:3000", "https://xetaravel.com"] {
+            let config = Config::from_lookup(with_base(&[("CORS_ORIGIN", value)])).unwrap();
+            assert_eq!(config.cors_origin, value);
+        }
     }
 
     #[test]
