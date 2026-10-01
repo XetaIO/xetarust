@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 
 import { Toaster } from "@/components/ui/sonner";
 import { profile } from "@/content/profile";
+import { SITE_URL } from "@/lib/site";
 
 import "./globals.css";
 
@@ -16,10 +17,8 @@ const geistMono = Geist_Mono({
     subsets: ["latin"],
 });
 
-const DOMAIN_URL = process.env.DOMAIN_URL ?? "https://xetaravel.com";
-
 export const metadata: Metadata = {
-    metadataBase: new URL(DOMAIN_URL),
+    metadataBase: new URL(SITE_URL),
 
     title: {
         default: `${profile.name} — ${profile.title}`,
@@ -29,7 +28,7 @@ export const metadata: Metadata = {
 
     openGraph: {
         type: "website",
-        url: DOMAIN_URL,
+        url: SITE_URL,
         siteName: "Xetaravel",
         title: `${profile.name} — ${profile.title}`,
         description: profile.tagline,

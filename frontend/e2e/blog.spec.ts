@@ -95,6 +95,11 @@ test("admin publishes an article and a member comments it", async ({ browser }) 
   expect(await shareHref("Share on Facebook")).toContain("facebook.com/sharer/sharer.php?u=");
   expect(await shareHref("Share on Facebook")).toContain(encodedPath);
 
+  // The published article is listed in the sitemap.
+  const sitemap = await reader.request.get("/sitemap.xml");
+  expect(sitemap.status()).toBe(200);
+  expect(await sitemap.text()).toContain(`${new URL(reader.url()).pathname}</loc>`);
+
   // --- Member: registers and comments.
   const memberContext = await browser.newContext();
   const member = await memberContext.newPage();

@@ -16,6 +16,23 @@ export function getArticles(query: ArticlesQuery = {}): Promise<Paginated<Articl
   return apiFetch("/api/articles", { query: { ...query } });
 }
 
+/** Largest page size accepted by the API (`MAX_PER_PAGE` in `backend/kernel/src/pagination.rs`). */
+const MAX_PER_PAGE = 50;
+
+/**
+ * Lists every published article by walking all the pages of the public listing:
+ * the first page gives the page count, the others are fetched in parallel.
+ */
+export async function getAllArticles(): Promise<ArticleSummaryDto[]> {
+  const first = await getArticles({ page: 1, per_page: MAX_PER_PAGE });
+  const others = await Promise.all(
+    Array.from({ length: Math.max(first.total_pages - 1, 0) }, (_, index) =>
+      getArticles({ page: index + 2, per_page: MAX_PER_PAGE }),
+    ),
+  );
+  return [first, ...others].flatMap((page) => page.items);
+}
+
 /** Loads a published article, or `null` when it does not exist. */
 export function getArticle(slug: string): Promise<ArticleDto | null> {
   return orNull(apiFetch(`/api/articles/${encodeURIComponent(slug)}`));

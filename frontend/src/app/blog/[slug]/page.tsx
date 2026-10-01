@@ -13,12 +13,11 @@ import { ShareButtons } from "@/features/publishing/components/share-buttons";
 import { coverUrl } from "@/features/publishing/cover";
 import { getArticle } from "@/features/publishing/queries";
 import { formatDate } from "@/lib/format";
-
-const DOMAIN_URL = process.env.DOMAIN_URL ?? "https://xetaravel.com";
+import { absoluteUrl } from "@/lib/site";
 
 /** Canonical public URL of the article with the given slug. */
 function articleUrl(slug: string): string {
-    return `${DOMAIN_URL}/blog/${slug}`;
+    return absoluteUrl(`/blog/${slug}`);
 }
 
 /** Uses the article title, excerpt and cover image as metadata. */
