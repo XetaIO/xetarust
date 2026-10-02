@@ -27,7 +27,7 @@ frontend/src/
 │                               components/cv-download (bouton « Download my CV » de l'accueil, widget Turnstile, saveBlob)
 ├── lib/
 │   ├── api/client.ts           apiFetch() server-only, ajoute le Bearer depuis le cookie et l'IP du visiteur (X-Forwarded-For) sur chaque appel ; corps JSON, ou Blob envoyé brut ; apiFetchBytes() (réponse binaire, ex. PDF) ; apiUpload() (PUT d'un fichier via apiFetch) ; apiProxy() (relaie une réponse binaire publique GET)
-│   ├── api/errors.ts           ApiError (miroir de ErrorBody), isApiError, orNull
+│   ├── api/errors.ts           ApiError (miroir de ErrorBody ; digest fixe TOO_MANY_REQUESTS_DIGEST sur un 429), isApiError, isTooManyRequests, orNull
 │   ├── api/session-cookie.ts   nom du cookie httpOnly (partagé client / proxy / identity)
 │   ├── client-ip.ts            clientIp() : IP du visiteur, relayée automatiquement par lib/api/client.ts (rate limit global et strict, captcha) ; undefined hors requête (build)
 │   ├── forms.ts                FormState + helpers de lecture de FormData
@@ -46,6 +46,7 @@ frontend/src/
 - Tout module qui touche au cookie ou à l'API importe `"server-only"`.
 - Server Action type : lire le `FormData` → construire le DTO typé (`@/types/api/<contexte>/...`) → `apiFetch` dans un `try` → `toFormState(error)` en cas d'erreur 4xx → `revalidatePath` → `redirect` **hors du try**.
 - Formulaires : `useActionState` + `FieldError` / `FormMessage` pour afficher `fields` renvoyés par l'API. Les messages de validation viennent du backend (source de vérité).
+- **Erreurs de rendu** : `app/error.tsx` (toutes les pages, y compris le layout du dashboard) et `app/blog/error.tsx`. En production, une error boundary ne reçoit que le `digest` d'une erreur serveur : `ApiError` pose un digest fixe sur un 429 (Next.js conserve un digest déjà présent), et `isTooManyRequests(error)` affiche alors `TooManyRequests` (`components/site/too-many-requests.tsx`) au lieu du message générique. Bouton « Try again » → `retry()` (stable depuis Next 16.3).
 - Suppressions : composant `ConfirmAction` (AlertDialog + toast) avec une Server Action liée (`action.bind(null, id)`).
 - L'autorisation réelle est faite par l'API Rust ; `proxy.ts` et `requireAdmin()` ne sont que du confort UX (404 pour les membres sur `/dashboard`). Une page du dashboard appelle **elle-même** `await requireAdmin()` avant ses requêtes : le layout est rendu en parallèle de la page (sinon un membre déclenche des appels admin → 403 dans les logs) et n'est pas re-rendu lors d'une navigation client. `getCurrentUser` est mémoïsé (`cache`) : un seul `/api/auth/me` par requête.
 - **Médias** : les images servies par l'API (couvertures d'articles) passent par le route handler `app/media/covers/[name]/route.ts` (`apiProxy`) ; utiliser `coverUrl(name)` (`features/publishing/cover.ts`) avec `next/image`, qui optimise (tailles, WebP/AVIF). Les chemins optimisables sont listés dans `images.localPatterns` (`next.config.ts`). L'upload passe par la Server Action `saveArticle` (`bodySizeLimit: "6mb"`).
