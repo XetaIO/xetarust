@@ -20,21 +20,43 @@ use crate::state::AppState;
 /// How long a browser may cache a CORS preflight answer.
 const CORS_MAX_AGE: Duration = Duration::from_secs(10 * 60);
 
-/// Builds the full API router. The credential routes of Identity (login,
-/// register) and the resume download are rate limited per client IP; the
-/// other routes are not. Every route answers CORS for the configured origin.
+/// Message of the strict limit of the credential routes and the resume.
+const TOO_MANY_ATTEMPTS: &str = "too many attempts, try again later";
+
+/// Message of the global limit of every route.
+const TOO_MANY_REQUESTS: &str = "too many requests, try again later";
+
+/// Builds the full API router. Every route but the health check (liveness
+/// probe) is rate limited per client IP by a generous global limit; the
+/// credential routes of Identity (login, register) and the resume download
+/// add a strict limit of their own. CORS wraps everything, so preflights are
+/// never counted and the `429` answers carry the CORS headers.
 pub fn router(state: AppState) -> Router {
     let cors = cors(state.cors_origin.clone());
-    let auth = rate_limited(xetaravel_identity::auth_router(), state.auth_rate_limit);
-    let resume = rate_limited(xetaravel_resume::router(), state.auth_rate_limit);
-
-    Router::new()
-        .route("/api/health", get(health))
+    let auth = rate_limited(
+        xetaravel_identity::auth_router(),
+        state.auth_rate_limit,
+        TOO_MANY_ATTEMPTS,
+    );
+    let resume = rate_limited(
+        xetaravel_resume::router(),
+        state.auth_rate_limit,
+        TOO_MANY_ATTEMPTS,
+    );
+    let api = Router::new()
         .merge(auth)
         .merge(xetaravel_identity::account_router())
         .merge(xetaravel_publishing::router())
         .merge(xetaravel_discussion::router())
-        .merge(resume)
+        .merge(resume);
+
+    Router::new()
+        .route("/api/health", get(health))
+        .merge(rate_limited(
+            api,
+            state.global_rate_limit,
+            TOO_MANY_REQUESTS,
+        ))
         .with_state(state)
         .layer(cors)
 }
@@ -60,9 +82,14 @@ fn cors(origin: HeaderValue) -> CorsLayer {
         .max_age(CORS_MAX_AGE)
 }
 
-/// Wraps `routes` in a per-IP rate limiter. The client IP is read from
-/// `X-Forwarded-For` (set by the Next.js server), then from the peer address.
-fn rate_limited(routes: Router<AppState>, settings: RateLimitSettings) -> Router<AppState> {
+/// Wraps `routes` in a per-IP rate limiter answering `429` with `message`.
+/// The client IP is read from `X-Forwarded-For` (set by the Next.js server),
+/// then from the peer address.
+fn rate_limited(
+    routes: Router<AppState>,
+    settings: RateLimitSettings,
+    message: &'static str,
+) -> Router<AppState> {
     let config = GovernorConfigBuilder::default()
         .per_second(settings.period_seconds)
         .burst_size(settings.burst)
@@ -70,15 +97,16 @@ fn rate_limited(routes: Router<AppState>, settings: RateLimitSettings) -> Router
         .finish()
         .expect("the rate limit settings are validated as positive by the config");
 
-    routes.layer(GovernorLayer::new(config).error_handler(rate_limit_error))
+    routes.layer(
+        GovernorLayer::new(config).error_handler(move |error| rate_limit_error(error, message)),
+    )
 }
 
-/// Converts a rate limiter failure into the project's JSON error format.
-fn rate_limit_error(error: GovernorError) -> Response {
+/// Converts a rate limiter failure into the project's JSON error format,
+/// with `message` when the client sent too many requests.
+fn rate_limit_error(error: GovernorError, message: &str) -> Response {
     let error = match error {
-        GovernorError::TooManyRequests { .. } => {
-            AppError::TooManyRequests("too many attempts, try again later".into())
-        }
+        GovernorError::TooManyRequests { .. } => AppError::TooManyRequests(message.into()),
         other => AppError::Internal(format!("rate limiter failure: {other}")),
     };
     ApiError(error).into_response()

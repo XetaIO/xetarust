@@ -37,7 +37,7 @@ jobs:
     services:
       # Same database as the `postgres_test` service of docker-compose.yml.
       postgres:
-        image: postgres:17-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_USER: xetaravel
           POSTGRES_PASSWORD: xetaravel
@@ -110,9 +110,10 @@ jobs:
     env:
       # Captcha with the Cloudflare test keys (the secret comes from
       # .env.example; the widget and siteverify reach the real Cloudflare), and
-      # a rate limit out of reach: every e2e request comes from the same IP.
+      # rate limits out of reach: every e2e request comes from the same IP.
       NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
       AUTH_RATE_LIMIT_BURST: "1000"
+      GLOBAL_RATE_LIMIT_BURST: "100000"
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable

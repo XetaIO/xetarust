@@ -1,8 +1,13 @@
 //! SeaORM helpers shared by the persistence adapters of every context.
 
-use sea_orm::{ConnectOptions, Database, DatabaseConnection, DbErr, SqlErr};
+use sea_orm::{ConnectOptions, Database, DatabaseConnection, DbErr, RuntimeErr, SqlErr};
 
 use crate::error::DomainError;
+
+/// SQLSTATE `restrict_violation`: since PostgreSQL 18, deleting a row still
+/// referenced through an `ON DELETE RESTRICT` foreign key raises it instead of
+/// `foreign_key_violation` (unknown to [`SqlErr`]).
+const RESTRICT_VIOLATION: &str = "23001";
 
 /// Opens a connection pool to PostgreSQL.
 pub async fn connect(database_url: &str) -> Result<DatabaseConnection, DbErr> {
@@ -17,13 +22,30 @@ pub fn db_error(error: DbErr) -> DomainError {
         Some(SqlErr::UniqueConstraintViolation(_)) => {
             DomainError::Conflict("this resource already exists".into())
         }
-        Some(SqlErr::ForeignKeyConstraintViolation(_)) => {
-            DomainError::Conflict("this resource is referenced by another one".into())
-        }
+        Some(SqlErr::ForeignKeyConstraintViolation(_)) => referenced(),
+        _ if is_restrict_violation(&error) => referenced(),
         _ => match error {
             DbErr::RecordNotUpdated | DbErr::RecordNotFound(_) => DomainError::NotFound("record"),
             other => DomainError::Repository(other.to_string()),
         },
+    }
+}
+
+/// Conflict raised when a write would break a foreign key.
+fn referenced() -> DomainError {
+    DomainError::Conflict("this resource is referenced by another one".into())
+}
+
+/// Tells whether `error` is a PostgreSQL [`RESTRICT_VIOLATION`].
+fn is_restrict_violation(error: &DbErr) -> bool {
+    match error {
+        DbErr::Exec(RuntimeErr::SqlxError(error)) | DbErr::Query(RuntimeErr::SqlxError(error)) => {
+            error
+                .as_database_error()
+                .and_then(|error| error.code())
+                .is_some_and(|code| code == RESTRICT_VIOLATION)
+        }
+        _ => false,
     }
 }
 

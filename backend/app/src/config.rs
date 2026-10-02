@@ -21,7 +21,8 @@ pub enum ConfigError {
     Invalid(&'static str, String),
 }
 
-/// Per-IP rate limit of the credential routes (login, register).
+/// Per-IP rate limit: a token bucket of `burst` requests, refilled by one
+/// request every `period_seconds`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RateLimitSettings {
     /// Requests a single IP may send in a row.
@@ -30,8 +31,18 @@ pub struct RateLimitSettings {
     pub period_seconds: u64,
 }
 
+impl RateLimitSettings {
+    /// Global limit of every route: 60 requests in a row, then one more each
+    /// second (generous enough for the pages rendered by Next.js).
+    pub const GLOBAL: Self = Self {
+        burst: 60,
+        period_seconds: 1,
+    };
+}
+
 impl Default for RateLimitSettings {
-    /// 5 attempts in a row, then one every 12 seconds (5 per minute).
+    /// 5 attempts in a row, then one every 12 seconds (5 per minute): the
+    /// strict limit of the credential routes.
     fn default() -> Self {
         Self {
             burst: 5,
@@ -50,6 +61,8 @@ pub struct Config {
     pub captcha: CaptchaSettings,
     /// Per-IP rate limit of the credential routes and of the resume download.
     pub auth_rate_limit: RateLimitSettings,
+    /// Per-IP rate limit of every route but the health check.
+    pub global_rate_limit: RateLimitSettings,
     /// Anti-flood policy of the members' comments.
     pub comment_throttle: CommentThrottle,
     pub app_addr: String,
@@ -95,6 +108,7 @@ impl Config {
 
         let ttl_seconds = positive(&lookup, "JWT_TTL_SECONDS")?.unwrap_or(7 * 24 * 3600);
         let defaults = RateLimitSettings::default();
+        let global = RateLimitSettings::GLOBAL;
         let throttle = CommentThrottle::default();
 
         Ok(Self {
@@ -111,6 +125,11 @@ impl Config {
                 burst: positive(&lookup, "AUTH_RATE_LIMIT_BURST")?.unwrap_or(defaults.burst),
                 period_seconds: positive(&lookup, "AUTH_RATE_LIMIT_PERIOD_SECONDS")?
                     .unwrap_or(defaults.period_seconds),
+            },
+            global_rate_limit: RateLimitSettings {
+                burst: positive(&lookup, "GLOBAL_RATE_LIMIT_BURST")?.unwrap_or(global.burst),
+                period_seconds: positive(&lookup, "GLOBAL_RATE_LIMIT_PERIOD_SECONDS")?
+                    .unwrap_or(global.period_seconds),
             },
             comment_throttle: CommentThrottle {
                 double_post_window: positive(&lookup, "COMMENT_DOUBLE_POST_HOURS")?
@@ -223,6 +242,13 @@ mod tests {
                 period_seconds: 12
             }
         );
+        assert_eq!(
+            config.global_rate_limit,
+            RateLimitSettings {
+                burst: 60,
+                period_seconds: 1
+            }
+        );
         assert_eq!(config.comment_throttle, CommentThrottle::default());
     }
 
@@ -238,6 +264,22 @@ mod tests {
             RateLimitSettings {
                 burst: 10,
                 period_seconds: 30
+            }
+        );
+    }
+
+    #[test]
+    fn reads_the_global_rate_limit() {
+        let config = Config::from_lookup(with_base(&[
+            ("GLOBAL_RATE_LIMIT_BURST", "120"),
+            ("GLOBAL_RATE_LIMIT_PERIOD_SECONDS", "2"),
+        ]))
+        .unwrap();
+        assert_eq!(
+            config.global_rate_limit,
+            RateLimitSettings {
+                burst: 120,
+                period_seconds: 2
             }
         );
     }
@@ -337,6 +379,8 @@ mod tests {
         for key in [
             "AUTH_RATE_LIMIT_BURST",
             "AUTH_RATE_LIMIT_PERIOD_SECONDS",
+            "GLOBAL_RATE_LIMIT_BURST",
+            "GLOBAL_RATE_LIMIT_PERIOD_SECONDS",
             "COMMENT_DOUBLE_POST_HOURS",
             "COMMENT_COOLDOWN_MINUTES",
         ] {

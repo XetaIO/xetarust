@@ -1,7 +1,6 @@
 "use server";
 
 import { apiFetchBytes } from "@/lib/api/client";
-import { clientIp } from "@/lib/client-ip";
 import { type FormState, toFormState } from "@/lib/forms";
 import type { DownloadResumeRequest } from "@/types/api/resume/DownloadResumeRequest";
 
@@ -16,7 +15,7 @@ export async function downloadResume(captchaToken: string): Promise<ResumeDownlo
   const body: DownloadResumeRequest = { captcha_token: captchaToken };
 
   try {
-    return { pdf: await apiFetchBytes("/api/cv", { method: "POST", body, clientIp: await clientIp() }) };
+    return { pdf: await apiFetchBytes("/api/cv", { method: "POST", body }) };
   } catch (error) {
     return toFormState(error);
   }

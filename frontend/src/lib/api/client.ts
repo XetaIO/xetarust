@@ -3,6 +3,7 @@ import "server-only";
 import { cookies } from "next/headers";
 
 import { SESSION_COOKIE } from "@/lib/api/session-cookie";
+import { clientIp } from "@/lib/client-ip";
 
 import { ApiError } from "./errors";
 
@@ -13,14 +14,12 @@ type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export interface ApiRequestOptions {
   method?: HttpMethod;
-  /** JSON-serializable request body. */
+  /** Request body: a `Blob` is sent as-is (raw file), anything else as JSON. */
   body?: unknown;
   /** Query string parameters; `null`/`undefined` values are skipped. */
   query?: Record<string, string | number | null | undefined>;
   /** When true, forwards the JWT stored in the httpOnly session cookie. */
   auth?: boolean;
-  /** IP of the visitor, sent as `X-Forwarded-For` (rate limit, captcha). */
-  clientIp?: string;
 }
 
 /** Builds the absolute API URL for `path` and its query parameters. */
@@ -41,25 +40,46 @@ async function authorizationHeader(): Promise<Record<string, string>> {
 }
 
 /**
- * Builds the `fetch` init of an API call: method, JSON body, JWT (when
- * `auth`) and visitor IP headers. Responses are never cached by Next.js.
+ * Returns the `X-Forwarded-For` header carrying the visitor IP, if known:
+ * the API rate limits each visitor.
+ */
+async function forwardedForHeader(): Promise<Record<string, string>> {
+  const ip = await clientIp();
+  return ip ? { "X-Forwarded-For": ip } : {};
+}
+
+/**
+ * Returns the body of an API call with its `Content-Type`: a `Blob` keeps its
+ * own type (raw file upload), anything else is serialized as JSON.
+ */
+function requestBody(body: unknown): { body?: BodyInit; contentType?: string } {
+  if (body === undefined) {
+    return {};
+  }
+  if (body instanceof Blob) {
+    return { body, contentType: body.type || "application/octet-stream" };
+  }
+  return { body: JSON.stringify(body), contentType: "application/json" };
+}
+
+/**
+ * Builds the `fetch` init of an API call: method, body (JSON or raw file),
+ * JWT (when `auth`) and visitor IP headers. Responses are never cached by
+ * Next.js.
  */
 async function requestInit(options: ApiRequestOptions, accept: string): Promise<RequestInit> {
+  const { body, contentType } = requestBody(options.body);
   const headers: Record<string, string> = {
     Accept: accept,
+    ...(contentType ? { "Content-Type": contentType } : {}),
     ...(options.auth ? await authorizationHeader() : {}),
+    ...(await forwardedForHeader()),
   };
-  if (options.body !== undefined) {
-    headers["Content-Type"] = "application/json";
-  }
-  if (options.clientIp) {
-    headers["X-Forwarded-For"] = options.clientIp;
-  }
 
   return {
     method: options.method ?? "GET",
     headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    body,
     cache: "no-store",
   };
 }
@@ -110,22 +130,7 @@ export async function apiFetchBytes(path: string, options: ApiRequestOptions = {
  * @throws {ApiError} when the API answers with a non-2xx status.
  */
 export async function apiUpload<T>(path: string, file: Blob): Promise<T> {
-  const response = await fetch(buildUrl(path, undefined), {
-    method: "PUT",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": file.type || "application/octet-stream",
-      ...(await authorizationHeader()),
-    },
-    body: file,
-    cache: "no-store",
-  });
-
-  const data: unknown = await response.json().catch(() => null);
-  if (!response.ok) {
-    throw new ApiError(response.status, data as ConstructorParameters<typeof ApiError>[1]);
-  }
-  return data as T;
+  return apiFetch<T>(path, { method: "PUT", body: file, auth: true });
 }
 
 /** Response headers of the API relayed as-is by {@link apiProxy}. */
@@ -138,7 +143,7 @@ const PROXIED_HEADERS = [
 ];
 
 /** Options of {@link apiProxy}: the proxied routes are public (no JWT). */
-export type ApiProxyOptions = Pick<ApiRequestOptions, "method" | "body" | "clientIp">;
+export type ApiProxyOptions = Pick<ApiRequestOptions, "method" | "body">;
 
 /**
  * Relays a public, non-JSON API response (e.g. an image) to the

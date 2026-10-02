@@ -136,14 +136,15 @@ docker exec xetaravel_postgres psql -U xetaravel -d xetaravel \
 Every variable is documented in [`.env.example`](.env.example) and
 [`frontend/.env.example`](frontend/.env.example). The most notable ones:
 
-| Variable                                                   | Purpose                                               |
-| ---------------------------------------------------------- | ----------------------------------------------------- |
-| `CORS_ORIGIN`                                              | Mandatory: exact origin of the Next.js site (CORS)    |
-| `JWT_TTL_SECONDS`                                          | JWT lifetime (default 7 days)                         |
-| `AUTH_RATE_LIMIT_BURST` / `AUTH_RATE_LIMIT_PERIOD_SECONDS` | Per-IP rate limit of login / register                 |
-| `COMMENT_DOUBLE_POST_HOURS` / `COMMENT_COOLDOWN_MINUTES`   | Comment anti-flood                                    |
-| `UPLOADS_DIR`                                              | Storage of the uploaded cover images                  |
-| `API_URL` (frontend)                                       | URL of the Rust API, used server-side only by Next.js |
+| Variable                                                       | Purpose                                               |
+| -------------------------------------------------------------- | ----------------------------------------------------- |
+| `CORS_ORIGIN`                                                  | Mandatory: exact origin of the Next.js site (CORS)    |
+| `JWT_TTL_SECONDS`                                              | JWT lifetime (default 7 days)                         |
+| `AUTH_RATE_LIMIT_BURST` / `AUTH_RATE_LIMIT_PERIOD_SECONDS`     | Strict per-IP rate limit of login / register / CV     |
+| `GLOBAL_RATE_LIMIT_BURST` / `GLOBAL_RATE_LIMIT_PERIOD_SECONDS` | Per-IP rate limit of every route but the health check |
+| `COMMENT_DOUBLE_POST_HOURS` / `COMMENT_COOLDOWN_MINUTES`       | Comment anti-flood                                    |
+| `UPLOADS_DIR`                                                  | Storage of the uploaded cover images                  |
+| `API_URL` (frontend)                                           | URL of the Rust API, used server-side only by Next.js |
 
 ## Development & tests
 
@@ -186,6 +187,9 @@ cd frontend
 npx playwright install chromium   # once
 npm run test:e2e                  # the API must be running; the dev server is started automatically
 ```
+
+Every e2e request reaches the API from the same IP: run the API with rate limits out of reach
+(`GLOBAL_RATE_LIMIT_BURST=100000` and `AUTH_RATE_LIMIT_BURST=1000`, in `.env` or the environment), as the CI does.
 
 ### Before opening a PR
 

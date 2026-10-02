@@ -195,7 +195,7 @@ async fn article_repository_update_and_delete() {
         .unwrap_err();
     assert!(
         matches!(error, DomainError::Conflict(_)),
-        "category in use must not be deleted"
+        "category in use must not be deleted: {error:?}"
     );
 
     assert!(repo.delete(article.id).await.unwrap());

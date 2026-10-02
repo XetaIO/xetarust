@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { apiFetch } from "@/lib/api/client";
-import { clientIp } from "@/lib/client-ip";
 import { field, type FormState, toFormState } from "@/lib/forms";
 import type { AuthResponse } from "@/types/api/identity/AuthResponse";
 import type { BanUserRequest } from "@/types/api/identity/BanUserRequest";
@@ -30,8 +29,7 @@ export async function login(_: FormState, data: FormData): Promise<FormState> {
   };
 
   try {
-    const options = { method: "POST", body, clientIp: await clientIp() } as const;
-    await storeSession(await apiFetch<AuthResponse>("/api/auth/login", options));
+    await storeSession(await apiFetch<AuthResponse>("/api/auth/login", { method: "POST", body }));
   } catch (error) {
     return toFormState(error);
   }
@@ -49,8 +47,7 @@ export async function register(_: FormState, data: FormData): Promise<FormState>
   };
 
   try {
-    const options = { method: "POST", body, clientIp: await clientIp() } as const;
-    await storeSession(await apiFetch<AuthResponse>("/api/auth/register", options));
+    await storeSession(await apiFetch<AuthResponse>("/api/auth/register", { method: "POST", body }));
   } catch (error) {
     return toFormState(error);
   }

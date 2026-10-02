@@ -28,7 +28,11 @@ pub struct AppState {
     pub principals: Arc<dyn PrincipalResolver>,
     /// Per-IP rate limit applied by the router to the credential routes and
     /// to the resume download (the captcha-protected routes).
+    #[from_ref(skip)]
     pub auth_rate_limit: RateLimitSettings,
+    /// Per-IP rate limit applied by the router to every route but the health check.
+    #[from_ref(skip)]
+    pub global_rate_limit: RateLimitSettings,
     /// Only origin a browser may read the API from (CORS), applied by the router.
     pub cors_origin: HeaderValue,
 }
@@ -77,6 +81,7 @@ impl AppState {
             discussion,
             resume,
             auth_rate_limit: config.auth_rate_limit,
+            global_rate_limit: config.global_rate_limit,
             cors_origin: config.cors_origin.clone(),
         }
     }

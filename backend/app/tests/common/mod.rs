@@ -33,6 +33,12 @@ pub const CAPTCHA_TOKEN: &str = "valid";
 /// Origin of the Next.js site, the only one CORS lets a browser read from.
 pub const ALLOWED_ORIGIN: &str = "http://localhost:3000";
 
+/// Rate limit no test reaches: leaves a limiter in place without blocking.
+pub const GENEROUS: RateLimitSettings = RateLimitSettings {
+    burst: 10_000,
+    period_seconds: 1,
+};
+
 /// Fake Cloudflare `siteverify`: succeeds only for [`CAPTCHA_TOKEN`] sent
 /// with [`CAPTCHA_SECRET`].
 async fn siteverify(Json(body): Json<Value>) -> Json<Value> {
@@ -61,18 +67,19 @@ pub struct TestApp {
 
 impl TestApp {
     /// Connects to the (migrated) test database and builds the production
-    /// router, with the captcha checked by a fake Cloudflare and a rate limit
+    /// router, with the captcha checked by a fake Cloudflare and rate limits
     /// out of reach.
     pub async fn start() -> Self {
-        Self::start_with(RateLimitSettings {
-            burst: 10_000,
-            period_seconds: 1,
-        })
-        .await
+        Self::start_with(GENEROUS, GENEROUS).await
     }
 
-    /// Same as [`Self::start`] with the given rate limit on the credential routes.
-    pub async fn start_with(auth_rate_limit: RateLimitSettings) -> Self {
+    /// Same as [`Self::start`] with the given rate limits: `auth_rate_limit`
+    /// on the credential routes and the resume, `global_rate_limit` on every
+    /// route but the health check.
+    pub async fn start_with(
+        auth_rate_limit: RateLimitSettings,
+        global_rate_limit: RateLimitSettings,
+    ) -> Self {
         let db = test_database().await;
         let uploads = tempfile::tempdir().unwrap();
         let config = Config {
@@ -86,6 +93,7 @@ impl TestApp {
                 siteverify_url: fake_cloudflare().await,
             },
             auth_rate_limit,
+            global_rate_limit,
             comment_throttle: CommentThrottle::default(),
             app_addr: "127.0.0.1:0".into(),
             cors_origin: HeaderValue::from_static(ALLOWED_ORIGIN),
@@ -101,6 +109,8 @@ impl TestApp {
     }
 
     /// Sends a request with a raw body and returns the status, headers and body bytes.
+    ///
+    /// Comes from a unique client IP, like [`Self::call`].
     pub async fn call_raw(
         &self,
         method: Method,
@@ -108,7 +118,10 @@ impl TestApp {
         token: Option<&str>,
         body: Vec<u8>,
     ) -> (StatusCode, HeaderMap, Bytes) {
-        let mut request = Request::builder().method(method).uri(uri);
+        let mut request = Request::builder()
+            .method(method)
+            .uri(uri)
+            .header("x-forwarded-for", unique_ip().to_string());
         if let Some(token) = token {
             request = request.header(header::AUTHORIZATION, format!("Bearer {token}"));
         }

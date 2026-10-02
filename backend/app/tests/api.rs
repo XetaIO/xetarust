@@ -12,7 +12,7 @@ use serde_json::{Value, json};
 use uuid::Uuid;
 use xetaravel_app::RateLimitSettings;
 
-use common::{ALLOWED_ORIGIN, CAPTCHA_TOKEN, TestApp, unique_ip};
+use common::{ALLOWED_ORIGIN, CAPTCHA_TOKEN, GENEROUS, TestApp, unique_ip};
 
 /// Origin of a site that must never be allowed to read the API.
 const EVIL_ORIGIN: &str = "https://evil.example";
@@ -136,10 +136,13 @@ async fn register_rejects_a_failed_captcha() {
 
 #[tokio::test]
 async fn auth_routes_are_rate_limited_per_ip() {
-    let app = TestApp::start_with(RateLimitSettings {
-        burst: 2,
-        period_seconds: 60,
-    })
+    let app = TestApp::start_with(
+        RateLimitSettings {
+            burst: 2,
+            period_seconds: 60,
+        },
+        GENEROUS,
+    )
     .await;
     let attacker = unique_ip();
     let attempt = json!({ "email": "ghost@example.com", "password": "wrong-password", "captcha_token": CAPTCHA_TOKEN });
@@ -187,10 +190,66 @@ async fn auth_routes_are_rate_limited_per_ip() {
         .await;
     assert_eq!(status, StatusCode::UNAUTHORIZED);
 
-    // Other routes are never rate limited.
+    // The other routes only answer to the (generous) global limit.
     for _ in 0..5 {
         let (status, _) = app
             .call_from(attacker, Method::GET, "/api/articles", None, None)
+            .await;
+        assert_eq!(status, StatusCode::OK);
+    }
+}
+
+#[tokio::test]
+async fn every_route_is_rate_limited_per_ip() {
+    let app = TestApp::start_with(
+        GENEROUS,
+        RateLimitSettings {
+            burst: 3,
+            period_seconds: 60,
+        },
+    )
+    .await;
+    let visitor = unique_ip();
+
+    for _ in 0..3 {
+        let (status, _) = app
+            .call_from(visitor, Method::GET, "/api/articles", None, None)
+            .await;
+        assert_eq!(status, StatusCode::OK);
+    }
+    let (status, body) = app
+        .call_from(visitor, Method::GET, "/api/articles", None, None)
+        .await;
+    assert_eq!(status, StatusCode::TOO_MANY_REQUESTS);
+    assert_eq!(body["error"], "too_many_requests");
+    assert_eq!(body["message"], "too many requests, try again later");
+
+    // The bucket is shared by every route of the same IP.
+    let (status, _) = app
+        .call_from(visitor, Method::GET, "/api/categories", None, None)
+        .await;
+    assert_eq!(status, StatusCode::TOO_MANY_REQUESTS);
+
+    // Another IP is not affected.
+    let (status, _) = app.call(Method::GET, "/api/articles", None, None).await;
+    assert_eq!(status, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn the_health_check_is_never_rate_limited() {
+    let app = TestApp::start_with(
+        GENEROUS,
+        RateLimitSettings {
+            burst: 1,
+            period_seconds: 60,
+        },
+    )
+    .await;
+    let probe = unique_ip();
+
+    for _ in 0..5 {
+        let (status, _) = app
+            .call_from(probe, Method::GET, "/api/health", None, None)
             .await;
         assert_eq!(status, StatusCode::OK);
     }

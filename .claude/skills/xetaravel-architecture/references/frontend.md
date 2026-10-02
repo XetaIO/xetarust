@@ -26,10 +26,10 @@ frontend/src/
 │   └── resume/                 actions.ts (downloadResume : jeton Turnstile → octets du PDF ou FormState),
 │                               components/cv-download (bouton « Download my CV » de l'accueil, widget Turnstile, saveBlob)
 ├── lib/
-│   ├── api/client.ts           apiFetch() server-only, ajoute le Bearer depuis le cookie ; apiFetchBytes() (réponse binaire, ex. PDF) ; apiUpload() (PUT octets bruts) ; apiProxy() (relaie une réponse binaire publique GET)
+│   ├── api/client.ts           apiFetch() server-only, ajoute le Bearer depuis le cookie et l'IP du visiteur (X-Forwarded-For) sur chaque appel ; corps JSON, ou Blob envoyé brut ; apiFetchBytes() (réponse binaire, ex. PDF) ; apiUpload() (PUT d'un fichier via apiFetch) ; apiProxy() (relaie une réponse binaire publique GET)
 │   ├── api/errors.ts           ApiError (miroir de ErrorBody), isApiError, orNull
 │   ├── api/session-cookie.ts   nom du cookie httpOnly (partagé client / proxy / identity)
-│   ├── client-ip.ts            clientIp() : IP du visiteur relayée en X-Forwarded-For (Identity, Resume)
+│   ├── client-ip.ts            clientIp() : IP du visiteur, relayée automatiquement par lib/api/client.ts (rate limit global et strict, captcha) ; undefined hors requête (build)
 │   ├── forms.ts                FormState + helpers de lecture de FormData
 │   └── format.ts               dates, pagination
 ├── components/                 transverses : ui/ (shadcn), forms/, site/ (header, footer, pagination), home/, dashboard/ (nav, page-header)
